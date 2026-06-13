@@ -3,6 +3,7 @@ import { requireAuth } from '~/server/utils/auth'
 import { chapterSchema } from '~/server/utils/validators'
 import { calculateChapterPoints } from '~/server/utils/levels'
 import { awardPublishChapter } from '~/server/utils/pointsService'
+import { triggerNovelUpdateNotifications } from '~/server/utils/notificationService'
 
 export default defineEventHandler(async (event) => {
   const user = requireAuth(event)
@@ -16,7 +17,6 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  // 检查小说权限
   const novel = await prisma.novel.findUnique({
     where: { id: novelId },
     select: { authorId: true, title: true }
@@ -46,7 +46,6 @@ export default defineEventHandler(async (event) => {
 
   const { title, content, order } = result.data
 
-  // 获取最大章节序号
   const maxOrder = await prisma.chapter.findFirst({
     where: { novelId },
     orderBy: { order: 'desc' },
@@ -55,7 +54,6 @@ export default defineEventHandler(async (event) => {
 
   const newOrder = order || (maxOrder?.order || 0) + 1
 
-  // 计算字数
   const wordCount = content.replace(/\s/g, '').length
 
   const chapter = await prisma.chapter.create({
@@ -71,11 +69,19 @@ export default defineEventHandler(async (event) => {
   const pointsEarned = calculateChapterPoints(wordCount)
   const pointsResult = await awardPublishChapter(user.userId, wordCount, title)
 
+  const notificationResult = await triggerNovelUpdateNotifications({
+    novelId,
+    chapterId: chapter.id,
+    chapterTitle: title,
+    novelTitle: novel.title
+  })
+
   return {
     success: true,
     chapter,
     pointsEarned,
     wordCount,
     unlockedAchievements: pointsResult.unlockedAchievements || [],
+    notificationResult
   }
 })

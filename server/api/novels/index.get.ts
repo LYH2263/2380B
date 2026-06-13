@@ -53,6 +53,7 @@ export default defineEventHandler(async (event) => {
             chapters: true,
             likes: true,
             favorites: true,
+            subscriptions: true,
             ratings: true
           }
         },
@@ -65,6 +66,10 @@ export default defineEventHandler(async (event) => {
             select: { id: true }
           },
           favorites: {
+            where: { userId: user.userId },
+            select: { id: true }
+          },
+          subscriptions: {
             where: { userId: user.userId },
             select: { id: true }
           }
@@ -88,9 +93,11 @@ export default defineEventHandler(async (event) => {
       avgRating: Math.round(avgRating * 10) / 10,
       isLiked: user ? novel.likes?.length > 0 : false,
       isFavorited: user ? novel.favorites?.length > 0 : false,
+      isSubscribed: user ? novel.subscriptions?.length > 0 : false,
       ratings: undefined,
       likes: undefined,
-      favorites: undefined
+      favorites: undefined,
+      subscriptions: undefined
     }
   })
 

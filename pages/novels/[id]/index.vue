@@ -105,6 +105,18 @@
               </NuxtLink>
 
               <button
+                @click="handleSubscribe"
+                :disabled="!user || subscribeLoading"
+                :class="[
+                  'btn-secondary flex items-center gap-2',
+                  novel.isSubscribed && 'bg-neuro-primary/20 border-neuro-primary'
+                ]"
+              >
+                <Icon :name="novel.isSubscribed ? 'ph:bell-ringing-fill' : 'ph:bell'" class="text-neuro-primary" />
+                {{ novel.isSubscribed ? '已订阅' : '订阅更新' }}
+              </button>
+
+              <button
                 @click="handleLike"
                 :disabled="!user || likeLoading"
                 :class="[
@@ -200,9 +212,12 @@ const novelId = computed(() => Number(route.params.id))
 
 const { data: novel, pending, refresh } = await useFetch(`/api/novels/${novelId.value}`)
 
+const { toggleSubscription } = useNotifications()
+
 const userRating = ref(novel.value?.userRating || 0)
 const likeLoading = ref(false)
 const favoriteLoading = ref(false)
+const subscribeLoading = ref(false)
 const ratingLoading = ref(false)
 
 watch(() => novel.value?.userRating, (val) => {
@@ -262,6 +277,23 @@ const handleFavorite = async () => {
     toast.error(e.message || '操作失败')
   } finally {
     favoriteLoading.value = false
+  }
+}
+
+const handleSubscribe = async () => {
+  if (!user.value) {
+    toast.warning('请先登录')
+    return
+  }
+  subscribeLoading.value = true
+  try {
+    const result = await toggleSubscription(novelId.value)
+    await refresh()
+    toast.success(result?.subscribed ? '订阅成功，更新时会及时通知您' : '已取消订阅')
+  } catch (e: any) {
+    toast.error(e.message || '操作失败')
+  } finally {
+    subscribeLoading.value = false
   }
 }
 

@@ -15,33 +15,56 @@
 
         <!-- Navigation -->
         <nav class="hidden md:flex items-center gap-6">
-          <NuxtLink 
-            to="/" 
+          <NuxtLink
+            to="/"
             class="text-white/70 hover:text-white transition"
             active-class="text-white font-semibold"
           >
             首页
           </NuxtLink>
-          <NuxtLink 
-            to="/novels" 
+          <NuxtLink
+            to="/novels"
             class="text-white/70 hover:text-white transition"
             active-class="text-white font-semibold"
           >
             小说库
           </NuxtLink>
-          <NuxtLink 
-            v-if="user" 
-            to="/user/favorites" 
+          <NuxtLink
+            v-if="user"
+            to="/user/favorites"
             class="text-white/70 hover:text-white transition"
             active-class="text-white font-semibold"
           >
             我的收藏
+          </NuxtLink>
+          <NuxtLink
+            v-if="user"
+            to="/user/subscriptions"
+            class="text-white/70 hover:text-white transition"
+            active-class="text-white font-semibold"
+          >
+            我的订阅
           </NuxtLink>
         </nav>
 
         <!-- User Actions -->
         <div class="flex items-center gap-4">
           <template v-if="user">
+            <NuxtLink
+              to="/user/updates"
+              class="relative p-2 hover:bg-white/10 rounded-lg transition"
+              active-class="text-neuro-primary"
+            >
+              <Icon name="ph:bell" class="text-xl" />
+              <div
+                v-if="notificationUnreadCount > 0"
+                class="absolute -top-1 -right-1 min-w-5 h-5 px-1.5 bg-neuro-primary text-white text-xs font-bold
+                       rounded-full flex items-center justify-center border-2 border-slate-900"
+              >
+                {{ notificationUnreadCount > 99 ? '99+' : notificationUnreadCount }}
+              </div>
+            </NuxtLink>
+
             <NuxtLink
               to="/messages"
               class="relative p-2 hover:bg-white/10 rounded-lg transition"
@@ -50,7 +73,7 @@
               <Icon name="ph:chat-circle-text" class="text-xl" />
               <div
                 v-if="totalUnread > 0"
-                class="absolute -top-1 -right-1 min-w-5 h-5 px-1.5 bg-neuro-primary text-white text-xs font-bold 
+                class="absolute -top-1 -right-1 min-w-5 h-5 px-1.5 bg-neuro-primary text-white text-xs font-bold
                        rounded-full flex items-center justify-center border-2 border-slate-900"
               >
                 {{ totalUnread > 99 ? '99+' : totalUnread }}
@@ -153,8 +176,8 @@
                     </div>
                   </NuxtLink>
 
-                  <NuxtLink 
-                    to="/user/favorites" 
+                  <NuxtLink
+                    to="/user/favorites"
                     class="flex items-center gap-3 px-4 py-3 hover:bg-white/10 transition"
                     @click="showDropdown = false"
                   >
@@ -164,8 +187,44 @@
                     </div>
                   </NuxtLink>
 
-                  <NuxtLink 
-                    to="/user/analytics" 
+                  <NuxtLink
+                    to="/user/subscriptions"
+                    class="flex items-center gap-3 px-4 py-3 hover:bg-white/10 transition"
+                    @click="showDropdown = false"
+                  >
+                    <Icon name="ph:bell-ringing-fill" class="text-neuro-primary" />
+                    <div class="flex-1">
+                      <div>我的订阅</div>
+                      <div class="text-[10px] text-white/40">管理订阅和更新通知</div>
+                    </div>
+                  </NuxtLink>
+
+                  <NuxtLink
+                    to="/user/notifications"
+                    class="flex items-center gap-3 px-4 py-3 hover:bg-white/10 transition"
+                    @click="showDropdown = false"
+                  >
+                    <Icon name="ph:list-bullets" class="text-blue-400" />
+                    <div class="flex-1">
+                      <div>通知中心</div>
+                      <div class="text-[10px] text-white/40">查看所有更新通知</div>
+                    </div>
+                  </NuxtLink>
+
+                  <NuxtLink
+                    to="/user/settings"
+                    class="flex items-center gap-3 px-4 py-3 hover:bg-white/10 transition"
+                    @click="showDropdown = false"
+                  >
+                    <Icon name="ph:sliders" class="text-white/60" />
+                    <div class="flex-1">
+                      <div>推送设置</div>
+                      <div class="text-[10px] text-white/40">设置通知方式和频率</div>
+                    </div>
+                  </NuxtLink>
+
+                  <NuxtLink
+                    to="/user/analytics"
                     class="flex items-center gap-3 px-4 py-3 hover:bg-white/10 transition"
                     @click="showDropdown = false"
                   >
@@ -240,6 +299,7 @@ import { onClickOutside, useInterval } from '@vueuse/core'
 
 const { user, logout } = useAuth()
 const { totalUnread, fetchTotalUnread } = useMessages()
+const { unreadCount: notificationUnreadCount, fetchUnreadCount: fetchNotificationUnreadCount } = useNotifications()
 const showDropdown = ref(false)
 const dropdownRef = ref<HTMLElement | null>(null)
 
@@ -250,14 +310,17 @@ onClickOutside(dropdownRef, () => {
 watch(user, async (newUser) => {
   if (newUser) {
     await fetchTotalUnread()
+    await fetchNotificationUnreadCount()
   } else {
     totalUnread.value = 0
+    notificationUnreadCount.value = 0
   }
 }, { immediate: true })
 
 useInterval(async () => {
   if (user.value) {
     await fetchTotalUnread()
+    await fetchNotificationUnreadCount()
   }
 }, 30000)
 
