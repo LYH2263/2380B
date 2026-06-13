@@ -84,13 +84,23 @@
                     :key="comment.id"
                     class="flex gap-3 text-sm"
                   >
-                    <img
-                      :src="comment.user.avatar"
-                      :alt="comment.user.username"
-                      class="w-6 h-6 rounded-full flex-shrink-0"
-                    />
+                    <NuxtLink
+                      :to="`/user/${comment.user.username}`"
+                      class="flex-shrink-0 hover:opacity-80 transition"
+                    >
+                      <img
+                        :src="comment.user.avatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=default'"
+                        :alt="comment.user.username"
+                        class="w-6 h-6 rounded-full"
+                      />
+                    </NuxtLink>
                     <div>
-                      <span class="font-medium text-neuro-primary">{{ comment.user.username }}</span>
+                      <NuxtLink
+                        :to="`/user/${comment.user.username}`"
+                        class="font-medium text-neuro-primary hover:underline"
+                      >
+                        {{ comment.user.username }}
+                      </NuxtLink>
                       <p class="text-white/80">{{ comment.content }}</p>
                     </div>
                   </div>
@@ -194,14 +204,24 @@
               class="p-4 glass rounded-xl"
             >
               <div class="flex items-start gap-3">
-                <img
-                  :src="comment.user.avatar"
-                  :alt="comment.user.username"
-                  class="w-10 h-10 rounded-full"
-                />
+                <NuxtLink
+                  :to="`/user/${comment.user.username}`"
+                  class="flex-shrink-0 hover:opacity-80 transition"
+                >
+                  <img
+                    :src="comment.user.avatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=default'"
+                    :alt="comment.user.username"
+                    class="w-10 h-10 rounded-full"
+                  />
+                </NuxtLink>
                 <div class="flex-1">
                   <div class="flex items-center gap-2 mb-1">
-                    <span class="font-medium">{{ comment.user.username }}</span>
+                    <NuxtLink
+                      :to="`/user/${comment.user.username}`"
+                      class="font-medium hover:text-neuro-primary transition"
+                    >
+                      {{ comment.user.username }}
+                    </NuxtLink>
                     <span class="text-xs text-white/50">{{ formatDate(comment.createdAt) }}</span>
                   </div>
                   <p class="text-white/80">{{ comment.content }}</p>
@@ -213,13 +233,23 @@
                       :key="reply.id"
                       class="flex items-start gap-2"
                     >
-                      <img
-                        :src="reply.user.avatar"
-                        :alt="reply.user.username"
-                        class="w-6 h-6 rounded-full"
-                      />
+                      <NuxtLink
+                        :to="`/user/${reply.user.username}`"
+                        class="flex-shrink-0 hover:opacity-80 transition"
+                      >
+                        <img
+                          :src="reply.user.avatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=default'"
+                          :alt="reply.user.username"
+                          class="w-6 h-6 rounded-full"
+                        />
+                      </NuxtLink>
                       <div>
-                        <span class="font-medium text-sm">{{ reply.user.username }}</span>
+                        <NuxtLink
+                          :to="`/user/${reply.user.username}`"
+                          class="font-medium text-sm hover:text-neuro-primary transition"
+                        >
+                          {{ reply.user.username }}
+                        </NuxtLink>
                         <p class="text-sm text-white/70">{{ reply.content }}</p>
                       </div>
                     </div>

@@ -42,6 +42,21 @@
         <!-- User Actions -->
         <div class="flex items-center gap-4">
           <template v-if="user">
+            <NuxtLink
+              to="/messages"
+              class="relative p-2 hover:bg-white/10 rounded-lg transition"
+              active-class="text-neuro-primary"
+            >
+              <Icon name="ph:chat-circle-text" class="text-xl" />
+              <div
+                v-if="totalUnread > 0"
+                class="absolute -top-1 -right-1 min-w-5 h-5 px-1.5 bg-neuro-primary text-white text-xs font-bold 
+                       rounded-full flex items-center justify-center border-2 border-slate-900"
+              >
+                {{ totalUnread > 99 ? '99+' : totalUnread }}
+              </div>
+            </NuxtLink>
+
             <div class="relative" ref="dropdownRef">
               <button 
                 @click="showDropdown = !showDropdown"
@@ -209,15 +224,30 @@
 </template>
 
 <script setup lang="ts">
-import { onClickOutside } from '@vueuse/core'
+import { onClickOutside, useInterval } from '@vueuse/core'
 
 const { user, logout } = useAuth()
+const { totalUnread, fetchTotalUnread } = useMessages()
 const showDropdown = ref(false)
 const dropdownRef = ref<HTMLElement | null>(null)
 
 onClickOutside(dropdownRef, () => {
   showDropdown.value = false
 })
+
+watch(user, async (newUser) => {
+  if (newUser) {
+    await fetchTotalUnread()
+  } else {
+    totalUnread.value = 0
+  }
+}, { immediate: true })
+
+useInterval(async () => {
+  if (user.value) {
+    await fetchTotalUnread()
+  }
+}, 30000)
 
 const handleLogout = async () => {
   await logout()

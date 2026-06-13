@@ -15,6 +15,7 @@ model User {
   username     String   @unique
   password     String
   avatar       String?
+  bio          String?  @db.Text
   role         Role     @default(USER)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -41,6 +42,10 @@ model User {
   ownedItems      UserItem[]
   sentInvitations Invitation[]    @relation("SentInvitations")
   receivedInvitation Invitation?  @relation("ReceivedInvitation")
+
+  conversationsAsUser1 Conversation[] @relation("ConversationUser1")
+  conversationsAsUser2 Conversation[] @relation("ConversationUser2")
+  messages         Message[]
 
   @@map("users")
 }
@@ -336,4 +341,48 @@ model Invitation {
 
   @@index([inviterId])
   @@map("invitations")
+}
+
+// 私信会话
+model Conversation {
+  id            Int       @id @default(autoincrement())
+  user1Id       Int
+  user2Id       Int
+  lastMessageId Int?     @unique
+  lastMessagePreview String? @db.VarChar(200)
+  lastMessageAt DateTime?
+  unreadCount1  Int       @default(0)
+  unreadCount2  Int       @default(0)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // 关联
+  user1         User      @relation("ConversationUser1", fields: [user1Id], references: [id], onDelete: Cascade)
+  user2         User      @relation("ConversationUser2", fields: [user2Id], references: [id], onDelete: Cascade)
+  lastMessage   Message?  @relation("LastMessage", fields: [lastMessageId], references: [id], onDelete: SetNull)
+  messages      Message[]
+
+  @@unique([user1Id, user2Id])
+  @@index([user1Id])
+  @@index([user2Id])
+  @@map("conversations")
+}
+
+// 私信消息
+model Message {
+  id             Int          @id @default(autoincrement())
+  conversationId Int
+  senderId       Int
+  content        String       @db.Text
+  readByReceiver Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+
+  // 关联
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender         User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  lastMessageFor Conversation? @relation("LastMessage")
+
+  @@index([conversationId])
+  @@index([senderId])
+  @@map("messages")
 }

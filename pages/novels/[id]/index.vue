@@ -39,9 +39,13 @@
             </div>
 
             <!-- Author -->
-            <div class="flex items-center gap-3 mb-4">
+            <NuxtLink
+              v-if="novel.author"
+              :to="`/user/${novel.author.username}`"
+              class="flex items-center gap-3 mb-4 hover:bg-white/5 p-2 -m-2 rounded-xl transition"
+            >
               <img
-                :src="novel.author?.avatar"
+                :src="novel.author?.avatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=default'"
                 :alt="novel.author?.username"
                 class="w-10 h-10 rounded-full border-2 border-neuro-primary"
               />
@@ -49,7 +53,8 @@
                 <p class="font-medium">{{ novel.author?.username }}</p>
                 <p class="text-sm text-white/50">作者</p>
               </div>
-            </div>
+              <Icon name="ph:caret-right" class="ml-auto text-white/30" />
+            </NuxtLink>
 
             <!-- Stats -->
             <div class="flex flex-wrap gap-6 mb-6 text-white/70">
