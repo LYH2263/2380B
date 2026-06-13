@@ -31,10 +31,15 @@ export const useAuth = () => {
     return data.value
   }
 
-  const register = async (email: string, username: string, password: string) => {
+  const register = async (email: string, username: string, password: string, inviteCode?: string) => {
+    const body: any = { email, username, password }
+    if (inviteCode && inviteCode.trim()) {
+      body.inviteCode = inviteCode.trim().toUpperCase()
+    }
+
     const { data, error } = await useFetch('/api/auth/register', {
       method: 'POST',
-      body: { email, username, password }
+      body
     })
 
     if (error.value) {
@@ -57,11 +62,35 @@ export const useAuth = () => {
 
   const isAdmin = computed(() => user.value?.role === 'ADMIN')
 
+  const userLevel = computed(() => user.value?.level || 1)
+  const userLevelName = computed(() => user.value?.levelName || '萌新读者')
+  const userPoints = computed(() => user.value?.points || 0)
+  const userTotalPoints = computed(() => user.value?.totalPoints || 0)
+  const userInviteCode = computed(() => user.value?.inviteCode || '')
+  const hasAdFree = computed(() => user.value?.adFree === true)
+
+  const getUserLevelProgress = () => {
+    if (!user.value) return { current: 0, required: 0, percent: 0 }
+    return user.value.levelProgress || { current: 0, required: 0, percent: 0 }
+  }
+
+  const refreshUser = async () => {
+    await fetchUser()
+  }
+
   return {
     user,
     token,
     isAdmin,
+    userLevel,
+    userLevelName,
+    userPoints,
+    userTotalPoints,
+    userInviteCode,
+    hasAdFree,
     fetchUser,
+    refreshUser,
+    getUserLevelProgress,
     login,
     register,
     logout

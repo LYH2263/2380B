@@ -10,22 +10,37 @@ datasource db {
 
 // 用户模型
 model User {
-  id        Int      @id @default(autoincrement())
-  email     String   @unique
-  username  String   @unique
-  password  String
-  avatar    String?
-  role      Role     @default(USER)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id           Int      @id @default(autoincrement())
+  email        String   @unique
+  username     String   @unique
+  password     String
+  avatar       String?
+  role         Role     @default(USER)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // 积分与等级相关
+  points       Int      @default(0)
+  totalPoints  Int      @default(0)
+  level        Int      @default(1)
+  inviteCode   String   @unique
+  nicknameColor String?
+  avatarFrame  String?
+  adFree       Boolean  @default(false)
 
   // 关联
-  favorites   Favorite[]
-  likes       Like[]
-  comments    Comment[]
-  ratings     Rating[]
-  novels      Novel[]    @relation("AuthorNovels")
-  readHistory ReadHistory[]
+  favorites       Favorite[]
+  likes           Like[]
+  comments        Comment[]
+  ratings         Rating[]
+  novels          Novel[]          @relation("AuthorNovels")
+  readHistory     ReadHistory[]
+  pointRecords    PointRecord[]
+  checkIns        CheckIn[]
+  achievements    UserAchievement[]
+  ownedItems      UserItem[]
+  sentInvitations Invitation[]    @relation("SentInvitations")
+  receivedInvitation Invitation?  @relation("ReceivedInvitation")
 
   @@map("users")
 }
@@ -167,4 +182,158 @@ model ReadHistory {
 
   @@unique([userId, novelId])
   @@map("read_history")
+}
+
+// 积分流水记录
+enum PointSource {
+  CHECKIN
+  CHECKIN_BONUS
+  CREATE_NOVEL
+  PUBLISH_CHAPTER
+  COMMENT
+  RATING
+  INVITE_USER
+  NOVEL_FAVORITED
+  NOVEL_LIKED
+  REDEEM
+  RETRO_CHECKIN
+  SYSTEM
+}
+
+model PointRecord {
+  id          Int         @id @default(autoincrement())
+  userId      Int
+  points      Int
+  source      PointSource
+  description String?
+  createdAt   DateTime    @default(now())
+
+  // 关联
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("point_records")
+}
+
+// 签到记录
+model CheckIn {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  date      DateTime
+  isRetro   Boolean  @default(false)
+  bonus     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  // 关联
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@index([userId])
+  @@map("check_ins")
+}
+
+// 成就定义
+model Achievement {
+  id          Int      @id @default(autoincrement())
+  code        String   @unique
+  name        String
+  description String
+  icon        String
+  points      Int      @default(0)
+  criteria    String   // JSON string for achievement criteria
+  category    AchievementCategory @default(GENERAL)
+  createdAt   DateTime @default(now())
+
+  // 关联
+  userAchievements UserAchievement[]
+
+  @@map("achievements")
+}
+
+enum AchievementCategory {
+  GENERAL
+  CREATION
+  READING
+  SOCIAL
+  SPECIAL
+}
+
+// 用户成就
+model UserAchievement {
+  id            Int      @id @default(autoincrement())
+  userId        Int
+  achievementId Int
+  unlockedAt    DateTime @default(now())
+
+  // 关联
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievement Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, achievementId])
+  @@index([userId])
+  @@map("user_achievements")
+}
+
+// 积分商城物品
+model ShopItem {
+  id          Int       @id @default(autoincrement())
+  name        String
+  description String
+  price       Int
+  category    ItemCategory
+  image       String?
+  effectValue String? // JSON string for item effect (avatar frame id, color code, etc.)
+  durationDays Int?   // null means permanent
+  isActive    Boolean   @default(true)
+  stock       Int?      // null means unlimited
+  soldCount   Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // 关联
+  userItems UserItem[]
+
+  @@unique([name, category])
+  @@map("shop_items")
+}
+
+enum ItemCategory {
+  AVATAR_FRAME
+  NICKNAME_COLOR
+  AD_FREE
+  BADGE
+  OTHER
+}
+
+// 用户兑换/拥有的物品
+model UserItem {
+  id         Int       @id @default(autoincrement())
+  userId     Int
+  shopItemId Int
+  expiresAt  DateTime?
+  isActive   Boolean   @default(true)
+  createdAt  DateTime  @default(now())
+
+  // 关联
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  shopItem ShopItem @relation(fields: [shopItemId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("user_items")
+}
+
+// 用户邀请
+model Invitation {
+  id          Int      @id @default(autoincrement())
+  inviterId   Int
+  inviteeId   Int      @unique
+  rewardGiven Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  // 关联
+  inviter User @relation("SentInvitations", fields: [inviterId], references: [id], onDelete: Cascade)
+  invitee User @relation("ReceivedInvitation", fields: [inviteeId], references: [id], onDelete: Cascade)
+
+  @@index([inviterId])
+  @@map("invitations")
 }

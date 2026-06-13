@@ -49,6 +49,20 @@
             required
           />
 
+          <div class="border-t border-white/10 pt-4 mt-6">
+            <div class="text-sm text-white/50 mb-2 flex items-center gap-2">
+              <Icon name="ph:gift" class="text-neuro-primary" />
+              邀请码（选填，输入可获得额外奖励）
+            </div>
+            <FormInput
+              v-model="form.inviteCode"
+              type="text"
+              label="邀请码"
+              placeholder="输入好友的邀请码"
+              :error="errors.inviteCode"
+            />
+          </div>
+
           <Button
             type="submit"
             :loading="loading"
@@ -84,14 +98,16 @@ const form = reactive({
   email: '',
   username: '',
   password: '',
-  confirmPassword: ''
+  confirmPassword: '',
+  inviteCode: '',
 })
 
 const errors = reactive({
   email: '',
   username: '',
   password: '',
-  confirmPassword: ''
+  confirmPassword: '',
+  inviteCode: '',
 })
 
 const loading = ref(false)
@@ -138,7 +154,7 @@ const handleSubmit = async () => {
 
   loading.value = true
   try {
-    await register(form.email, form.username, form.password)
+    await register(form.email, form.username, form.password, form.inviteCode)
     toast.success('注册成功')
     router.push('/')
   } catch (e: any) {

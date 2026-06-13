@@ -1,12 +1,34 @@
 import bcrypt from 'bcryptjs'
-import prisma from '~/server/utils/prisma'
+import { prisma } from '~/server/utils/prisma'
 import { registerSchema } from '~/server/utils/validators'
 import { signToken } from '~/server/utils/auth'
+import { awardInviteUser, addPoints } from '~/server/utils/pointsService'
+import { checkAchievements } from '~/server/utils/achievementService'
+
+function generateInviteCode(): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+  let code = ''
+  for (let i = 0; i < 6; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length))
+  }
+  return code
+}
+
+async function generateUniqueInviteCode(): Promise<string> {
+  let code = generateInviteCode()
+  let attempt = 0
+  while (attempt < 100) {
+    const existing = await prisma.user.findUnique({ where: { inviteCode: code } })
+    if (!existing) return code
+    code = generateInviteCode()
+    attempt++
+  }
+  return code + Date.now().toString().slice(-4)
+}
 
 export default defineEventHandler(async (event) => {
   const body = await readBody(event)
-  
-  // 验证输入
+
   const result = registerSchema.safeParse(body)
   if (!result.success) {
     throw createError({
@@ -15,9 +37,8 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  const { email, username, password } = result.data
+  const { email, username, password, inviteCode } = result.data as any
 
-  // 检查邮箱是否已存在
   const existingEmail = await prisma.user.findUnique({
     where: { email }
   })
@@ -28,7 +49,6 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  // 检查用户名是否已存在
   const existingUsername = await prisma.user.findUnique({
     where: { username }
   })
@@ -39,27 +59,63 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  // 加密密码
   const hashedPassword = await bcrypt.hash(password, 10)
+  const uniqueInviteCode = await generateUniqueInviteCode()
 
-  // 创建用户
-  const user = await prisma.user.create({
-    data: {
-      email,
-      username,
-      password: hashedPassword,
-      avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`
+  let inviterId: number | null = null
+  if (inviteCode) {
+    const inviter = await prisma.user.findUnique({
+      where: { inviteCode: inviteCode.toUpperCase() }
+    })
+    if (inviter) {
+      inviterId = inviter.id
     }
+  }
+
+  const user = await prisma.$transaction(async (tx) => {
+    const newUser = await tx.user.create({
+      data: {
+        email,
+        username,
+        password: hashedPassword,
+        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`,
+        inviteCode: uniqueInviteCode,
+      }
+    })
+
+    if (inviterId) {
+      await tx.invitation.create({
+        data: {
+          inviterId,
+          inviteeId: newUser.id,
+        }
+      })
+    }
+
+    return newUser
   })
 
-  // 生成 token
+  if (inviterId) {
+    await prisma.invitation.update({
+      where: { inviteeId: user.id },
+      data: { rewardGiven: true }
+    })
+    await awardInviteUser(inviterId, username)
+  }
+
+  setTimeout(async () => {
+    await checkAchievements(user.id)
+    if (inviterId) {
+      await checkAchievements(inviterId)
+    }
+  }, 100)
+
   const token = signToken({
     userId: user.id,
     email: user.email,
     role: user.role
   })
 
-  // 设置 cookie
   setCookie(event, 'auth_token', token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
@@ -74,7 +130,12 @@ export default defineEventHandler(async (event) => {
       email: user.email,
       username: user.username,
       avatar: user.avatar,
-      role: user.role
+      role: user.role,
+      points: 0,
+      totalPoints: 0,
+      level: 1,
+      inviteCode: user.inviteCode,
+      invitedBy: inviterId ? true : false,
     },
     token
   }

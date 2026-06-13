@@ -1,5 +1,6 @@
-import prisma from '~/server/utils/prisma'
+import { prisma } from '~/server/utils/prisma'
 import { requireAuth } from '~/server/utils/auth'
+import { awardNovelLiked } from '~/server/utils/pointsService'
 
 export default defineEventHandler(async (event) => {
   const user = requireAuth(event)
@@ -14,7 +15,8 @@ export default defineEventHandler(async (event) => {
 
   // 检查小说是否存在
   const novel = await prisma.novel.findUnique({
-    where: { id: novelId }
+    where: { id: novelId },
+    select: { id: true, title: true, authorId: true }
   })
 
   if (!novel) {
@@ -48,6 +50,21 @@ export default defineEventHandler(async (event) => {
         novelId
       }
     })
-    return { success: true, liked: true }
+
+    // 给作者奖励积分
+    let authorPointsEarned = 0
+    let authorUnlockedAchievements: any[] = []
+    if (novel.authorId !== user.userId) {
+      const pointsResult = await awardNovelLiked(novel.authorId, novel.title)
+      authorPointsEarned = pointsResult.success ? 1 : 0
+      authorUnlockedAchievements = pointsResult.unlockedAchievements || []
+    }
+
+    return {
+      success: true,
+      liked: true,
+      authorPointsEarned,
+      authorUnlockedAchievements,
+    }
   }
 })

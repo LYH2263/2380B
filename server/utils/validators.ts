@@ -8,7 +8,8 @@ export const loginSchema = z.object({
 export const registerSchema = z.object({
   email: z.string().email('邮箱格式不正确'),
   username: z.string().min(2, '用户名至少2个字符').max(20, '用户名最多20个字符'),
-  password: z.string().min(6, '密码至少6位')
+  password: z.string().min(6, '密码至少6位'),
+  inviteCode: z.string().optional(),
 })
 
 export const novelSchema = z.object({

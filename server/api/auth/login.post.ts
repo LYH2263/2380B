@@ -2,11 +2,11 @@ import bcrypt from 'bcryptjs'
 import prisma from '~/server/utils/prisma'
 import { loginSchema } from '~/server/utils/validators'
 import { signToken } from '~/server/utils/auth'
+import { checkAchievements } from '~/server/utils/achievementService'
 
 export default defineEventHandler(async (event) => {
   const body = await readBody(event)
   
-  // 验证输入
   const result = loginSchema.safeParse(body)
   if (!result.success) {
     throw createError({
@@ -17,7 +17,6 @@ export default defineEventHandler(async (event) => {
 
   const { email, password } = result.data
 
-  // 查找用户
   const user = await prisma.user.findUnique({
     where: { email }
   })
@@ -29,7 +28,6 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  // 验证密码
   const isValid = await bcrypt.compare(password, user.password)
   if (!isValid) {
     throw createError({
@@ -38,20 +36,20 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  // 生成 token
   const token = signToken({
     userId: user.id,
     email: user.email,
     role: user.role
   })
 
-  // 设置 cookie
   setCookie(event, 'auth_token', token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
-    maxAge: 60 * 60 * 24 * 7 // 7 days
+    maxAge: 60 * 60 * 24 * 7
   })
+
+  checkAchievements(user.id).catch(e => console.error('[login] 成就检测失败:', e))
 
   return {
     success: true,
@@ -60,7 +58,14 @@ export default defineEventHandler(async (event) => {
       email: user.email,
       username: user.username,
       avatar: user.avatar,
-      role: user.role
+      role: user.role,
+      points: user.points,
+      totalPoints: user.totalPoints,
+      level: user.level,
+      inviteCode: user.inviteCode,
+      nicknameColor: user.nicknameColor,
+      avatarFrame: user.avatarFrame,
+      adFree: user.adFree,
     },
     token
   }
