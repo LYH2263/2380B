@@ -365,6 +365,13 @@ const escapeHtml = (text: string) => {
   return div.innerHTML
 }
 
+const targetOffset = computed(() => {
+  const hash = route.hash
+  if (!hash || !hash.startsWith('#offset=')) return null
+  const offset = Number(hash.replace('#offset=', ''))
+  return isNaN(offset) ? null : offset
+})
+
 const renderedContent = computed(() => {
   if (!chapter.value?.content) return ''
 
@@ -376,6 +383,8 @@ const renderedContent = computed(() => {
   let currentOffset = globalOffset
 
   let html = ''
+  const tOffset = targetOffset.value
+  let targetHighlighted = false
 
   lines.forEach((line, lineIdx) => {
     if (line.trim().length === 0) {
@@ -390,10 +399,21 @@ const renderedContent = computed(() => {
       return a.startOffset < lineEndOffset && a.endOffset > lineStartOffset
     })
 
+    let targetStart = -1
+    let targetEnd = -1
+    if (tOffset !== null && !targetHighlighted) {
+      if (tOffset >= lineStartOffset && tOffset < lineEndOffset) {
+        targetStart = tOffset - lineStartOffset
+        targetEnd = Math.min(targetStart + 20, line.length)
+        targetHighlighted = true
+      }
+    }
+
     const segments: Array<{
       start: number
       end: number
       annotations: typeof annots
+      isTarget: boolean
     }> = []
 
     const splitPoints = new Set<number>()
@@ -406,6 +426,11 @@ const renderedContent = computed(() => {
       splitPoints.add(relStart)
       splitPoints.add(relEnd)
     })
+
+    if (targetStart >= 0) {
+      splitPoints.add(targetStart)
+      splitPoints.add(targetEnd)
+    }
 
     const points = Array.from(splitPoints).sort((a, b) => a - b)
 
@@ -420,20 +445,28 @@ const renderedContent = computed(() => {
         return segStart >= relStart && segEnd <= relEnd
       })
 
+      const isTarget = targetStart >= 0 && segStart >= targetStart && segEnd <= targetEnd
+
       segments.push({
         start: segStart,
         end: segEnd,
-        annotations: segAnnotations
+        annotations: segAnnotations,
+        isTarget
       })
     }
 
-    html += `<div class="relative group" data-line-index="${lineIdx}"><p class="mb-4 indent-8 leading-relaxed">`
+    const lineHasTarget = targetStart >= 0
+    const targetAttr = lineHasTarget ? ` id="search-target" data-search-target="true"` : ''
+
+    html += `<div class="relative group" data-line-index="${lineIdx}" data-line-start="${lineStartOffset}"${targetAttr}><p class="mb-4 indent-8 leading-relaxed">`
 
     segments.forEach(seg => {
       const segText = line.substring(seg.start, seg.end)
       const escaped = escapeHtml(segText)
 
-      if (seg.annotations.length === 0) {
+      if (seg.isTarget) {
+        html += `<span class="search-match-highlight">${escaped}</span>`
+      } else if (seg.annotations.length === 0) {
         html += escaped
       } else {
         const sortedAnns = [...seg.annotations].sort((a, b) => b.id - a.id)
@@ -467,6 +500,24 @@ const renderedContent = computed(() => {
 
   return html
 })
+
+const scrollToSearchTarget = () => {
+  if (!process.client) return
+  if (targetOffset.value === null) return
+
+  nextTick(() => {
+    setTimeout(() => {
+      const target = document.getElementById('search-target')
+      if (target) {
+        target.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        target.classList.add('animate-pulse')
+        setTimeout(() => {
+          target.classList.remove('animate-pulse')
+        }, 3000)
+      }
+    }, 300)
+  })
+}
 
 const handleMouseDown = (e: MouseEvent) => {
   mouseDownTarget = e.target
@@ -681,6 +732,7 @@ watch(() => chapter.value, (newVal) => {
   if (newVal && !pending.value) {
     nextTick(() => {
       initReadingTracking()
+      scrollToSearchTarget()
     })
   }
 }, { immediate: true })
@@ -747,5 +799,24 @@ useHead({
 .annotation-highlight {
   box-decoration-break: clone;
   -webkit-box-decoration-break: clone;
+}
+
+.search-match-highlight {
+  background: linear-gradient(120deg, rgba(250, 204, 21, 0.4) 0%, rgba(250, 204, 21, 0.2) 100%);
+  border-bottom: 2px solid rgba(250, 204, 21, 0.8);
+  border-radius: 3px;
+  padding: 0 2px;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+  animation: search-match-glow 2s ease-in-out infinite;
+}
+
+@keyframes search-match-glow {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(250, 204, 21, 0);
+  }
+  50% {
+    box-shadow: 0 0 8px 2px rgba(250, 204, 21, 0.4);
+  }
 }
 </style>

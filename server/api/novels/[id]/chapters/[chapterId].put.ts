@@ -1,6 +1,7 @@
 import prisma from '~/server/utils/prisma'
 import { requireAuth } from '~/server/utils/auth'
 import { chapterSchema } from '~/server/utils/validators'
+import { buildChapterSegments } from '~/server/utils/searchService'
 
 export default defineEventHandler(async (event) => {
   const user = requireAuth(event)
@@ -57,6 +58,12 @@ export default defineEventHandler(async (event) => {
       wordCount
     }
   })
+
+  try {
+    await buildChapterSegments(chapterId)
+  } catch (e: any) {
+    console.warn('Failed to rebuild chapter segments for chapter', chapterId, e.message)
+  }
 
   return { success: true, chapter: updatedChapter }
 })

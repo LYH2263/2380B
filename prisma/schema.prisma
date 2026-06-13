@@ -78,12 +78,14 @@ model Novel {
   status      NovelStatus @default(ONGOING)
   tags        String[]
   viewCount   Int      @default(0)
+  searchVector  Unsupported("tsvector")?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   // 关联
   author        User       @relation("AuthorNovels", fields: [authorId], references: [id])
   chapters      Chapter[]
+  chapterSegments ChapterSegment[]
   favorites     Favorite[]
   subscriptions Subscription[]
   notifications Notification[]
@@ -94,6 +96,7 @@ model Novel {
   analyticsEvents AnalyticsEvent[]
   readSessions  ChapterReadSession[]
 
+  @@index([searchVector], type: Gin)
   @@map("novels")
 }
 
@@ -111,11 +114,13 @@ model Chapter {
   content   String   @db.Text
   order     Int
   wordCount Int      @default(0)
+  searchVector  Unsupported("tsvector")?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   // 关联
   novel         Novel         @relation(fields: [novelId], references: [id], onDelete: Cascade)
+  segments      ChapterSegment[]
   comments      Comment[]
   notifications Notification[]
   notificationBatches NotificationBatch[]
@@ -124,7 +129,31 @@ model Chapter {
   annotations   Annotation[]
 
   @@unique([novelId, order])
+  @@index([searchVector], type: Gin)
   @@map("chapters")
+}
+
+// 章节分段索引模型 - 用于长章节分段搜索优化
+model ChapterSegment {
+  id          Int      @id @default(autoincrement())
+  novelId     Int
+  chapterId   Int
+  segmentIndex Int     // 段索引，从0开始
+  content     String   @db.Text
+  startOffset Int      // 在章节内容中的起始偏移
+  endOffset   Int      // 在章节内容中的结束偏移
+  searchVector  Unsupported("tsvector")?
+  createdAt   DateTime @default(now())
+
+  // 关联
+  novel       Novel    @relation(fields: [novelId], references: [id], onDelete: Cascade)
+  chapter     Chapter  @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+
+  @@index([novelId])
+  @@index([chapterId])
+  @@index([searchVector], type: Gin)
+  @@unique([chapterId, segmentIndex])
+  @@map("chapter_segments")
 }
 
 // 评论模型（支持段落评论）

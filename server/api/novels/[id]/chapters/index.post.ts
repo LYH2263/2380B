@@ -4,6 +4,7 @@ import { chapterSchema } from '~/server/utils/validators'
 import { calculateChapterPoints } from '~/server/utils/levels'
 import { awardPublishChapter } from '~/server/utils/pointsService'
 import { triggerNovelUpdateNotifications } from '~/server/utils/notificationService'
+import { buildChapterSegments } from '~/server/utils/searchService'
 
 export default defineEventHandler(async (event) => {
   const user = requireAuth(event)
@@ -75,6 +76,12 @@ export default defineEventHandler(async (event) => {
     chapterTitle: title,
     novelTitle: novel.title
   })
+
+  try {
+    await buildChapterSegments(chapter.id)
+  } catch (e: any) {
+    console.warn('Failed to build chapter segments for chapter', chapter.id, e.message)
+  }
 
   return {
     success: true,
