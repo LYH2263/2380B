@@ -35,3 +35,18 @@ export const commentSchema = z.object({
 export const ratingSchema = z.object({
   score: z.number().int().min(1, '评分最少1分').max(5, '评分最多5分')
 })
+
+export const annotationSchema = z.object({
+  content: z.string().min(1, '批注内容不能为空').max(2000, '批注最多2000字'),
+  startOffset: z.number().int().nonnegative('起始偏移量无效'),
+  endOffset: z.number().int().positive('结束偏移量无效'),
+  anchorText: z.string().min(1, '锚点文本不能为空'),
+})
+
+export const annotationReplySchema = z.object({
+  content: z.string().min(1, '回复内容不能为空').max(2000, '回复最多2000字'),
+})
+
+export const annotationStatusSchema = z.object({
+  status: z.enum(['PENDING', 'RESOLVED']),
+})

@@ -57,6 +57,8 @@ model User {
   analyticsEvents  AnalyticsEvent[]
   readSessions     ChapterReadSession[]
   retentions       UserRetention[]
+  annotations      Annotation[]
+  annotationReplies AnnotationReply[]
 
   @@map("users")
 }
@@ -119,6 +121,7 @@ model Chapter {
   notificationBatches NotificationBatch[]
   analyticsEvents AnalyticsEvent[]
   readSessions  ChapterReadSession[]
+  annotations   Annotation[]
 
   @@unique([novelId, order])
   @@map("chapters")
@@ -656,4 +659,55 @@ enum BatchStatus {
   PROCESSING
   COMPLETED
   FAILED
+}
+
+// ============================================
+// 批注与协作审稿相关模型
+// ============================================
+
+enum AnnotationStatus {
+  PENDING
+  RESOLVED
+}
+
+// 批注模型 - 关联章节的文本范围
+model Annotation {
+  id          Int              @id @default(autoincrement())
+  chapterId   Int
+  userId      Int              // 批注者
+  startOffset Int              // 起始偏移量
+  endOffset   Int              // 结束偏移量
+  anchorText  String           // 锚点文本（用于内容修改后重新定位）
+  content     String           @db.Text
+  status      AnnotationStatus @default(PENDING)
+  resolvedAt  DateTime?
+  resolvedBy  Int?             // 解决者ID
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  // 关联
+  chapter       Chapter           @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  user          User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  replies       AnnotationReply[]
+
+  @@index([chapterId])
+  @@index([chapterId, status])
+  @@map("annotations")
+}
+
+// 批注回复模型 - 支持多轮讨论
+model AnnotationReply {
+  id           Int      @id @default(autoincrement())
+  annotationId Int
+  userId       Int
+  content      String   @db.Text
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // 关联
+  annotation Annotation @relation(fields: [annotationId], references: [id], onDelete: Cascade)
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([annotationId])
+  @@map("annotation_replies")
 }

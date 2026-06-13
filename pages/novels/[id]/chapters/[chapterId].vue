@@ -1,6 +1,5 @@
 <template>
   <div class="min-h-screen">
-    <!-- Loading -->
     <div v-if="pending" class="container mx-auto px-4 py-8">
       <div class="animate-pulse space-y-4">
         <div class="h-8 bg-white/10 rounded w-1/3" />
@@ -10,10 +9,11 @@
       </div>
     </div>
 
-    <!-- Content -->
-    <div v-else-if="chapter" class="max-w-4xl mx-auto">
-      <!-- Chapter Header -->
-      <div class="sticky top-16 z-40 glass border-b border-white/10 px-4 py-3">
+    <div v-else-if="chapter" class="relative">
+      <div
+        class="sticky top-16 z-30 glass border-b border-white/10 px-4 py-3 transition-all"
+        :class="annotationsStore.isPanelOpen && annotationsStore.hasPermission ? 'pr-[28rem]' : ''"
+      >
         <div class="flex items-center justify-between">
           <NuxtLink
             :to="`/novels/${novelId}`"
@@ -27,116 +27,118 @@
             {{ chapter.title }}
           </h1>
 
-          <div class="w-8"></div>
+          <div class="flex items-center gap-2">
+            <button
+              v-if="annotationsStore.hasPermission"
+              @click="togglePanel"
+              class="relative p-2 rounded-xl hover:bg-white/10 transition"
+              :class="annotationsStore.isPanelOpen ? 'bg-neuro-primary/20 text-neuro-primary' : 'text-white/70'"
+            >
+              <Icon name="ph:chat-centered-dots" class="text-lg" />
+              <span
+                v-if="annotationsStore.pendingCount > 0"
+                class="absolute -top-0.5 -right-0.5 w-4 h-4 bg-amber-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center"
+              >
+                {{ annotationsStore.pendingCount > 9 ? '9+' : annotationsStore.pendingCount }}
+              </span>
+            </button>
+          </div>
         </div>
       </div>
 
-      <!-- Chapter Content -->
-      <article 
-        class="px-4 md:px-8 py-8"
+      <article
+        ref="contentRef"
+        class="px-4 md:px-8 py-8 transition-all max-w-4xl mx-auto"
+        :class="annotationsStore.isPanelOpen && annotationsStore.hasPermission ? 'pr-[28rem] md:pr-8' : ''"
+        @mouseup="handleMouseUp"
+        @mousedown="handleMouseDown"
       >
-        <div class="prose-novel">
-          <div
-            v-for="(para, index) in paragraphs"
-            :key="index"
-            class="relative group"
-          >
-            <p class="mb-4 indent-8 hover:bg-white/5 rounded transition cursor-pointer"
-               @click="toggleParagraphComment(index)"
-            >
-              {{ para }}
-            </p>
-            
-            <!-- Paragraph Comment Indicator -->
-            <button
-              v-if="paragraphComments[index]?.length"
-              @click.stop="toggleParagraphComment(index)"
-              class="absolute -right-8 top-0 text-neuro-primary hover:scale-110 transition"
-            >
-              <Icon name="ph:chat-circle-dots-fill" />
-              <span class="text-xs">{{ paragraphComments[index].length }}</span>
-            </button>
-
-            <!-- Paragraph Comments -->
-            <Transition
-              enter-active-class="transition duration-200"
-              enter-from-class="opacity-0 scale-95"
-              enter-to-class="opacity-100 scale-100"
-              leave-active-class="transition duration-150"
-              leave-from-class="opacity-100 scale-100"
-              leave-to-class="opacity-0 scale-95"
-            >
-              <div
-                v-if="activeParagraph === index"
-                class="mt-2 mb-4 p-4 glass rounded-xl"
-              >
-                <div class="flex items-center justify-between mb-3">
-                  <h4 class="font-bold text-sm">段落评论</h4>
-                  <button @click="activeParagraph = null" class="text-white/50 hover:text-white">
-                    <Icon name="ph:x" />
-                  </button>
-                </div>
-
-                <!-- Comments List -->
-                <div v-if="paragraphComments[index]?.length" class="space-y-3 mb-4 max-h-48 overflow-y-auto">
-                  <div
-                    v-for="comment in paragraphComments[index]"
-                    :key="comment.id"
-                    class="flex gap-3 text-sm"
-                  >
-                    <NuxtLink
-                      :to="`/user/${comment.user.username}`"
-                      class="flex-shrink-0 hover:opacity-80 transition"
-                    >
-                      <img
-                        :src="comment.user.avatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=default'"
-                        :alt="comment.user.username"
-                        class="w-6 h-6 rounded-full"
-                      />
-                    </NuxtLink>
-                    <div>
-                      <NuxtLink
-                        :to="`/user/${comment.user.username}`"
-                        class="font-medium text-neuro-primary hover:underline"
-                      >
-                        {{ comment.user.username }}
-                      </NuxtLink>
-                      <p class="text-white/80">{{ comment.content }}</p>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Add Comment -->
-                <div v-if="user" class="flex gap-2">
-                  <input
-                    v-model="newComment"
-                    type="text"
-                    placeholder="写下你的评论..."
-                    class="input-field text-sm py-2"
-                    @keyup.enter="submitComment(index)"
-                  />
-                  <Button
-                    @click="submitComment(index)"
-                    :loading="commentLoading"
-                    variant="primary"
-                    size="sm"
-                  >
-                    发送
-                  </Button>
-                </div>
-                <p v-else class="text-sm text-white/50">
-                  <NuxtLink to="/auth/login" class="text-neuro-primary hover:underline">登录</NuxtLink>
-                  后可以发表评论
-                </p>
-              </div>
-            </Transition>
-          </div>
-        </div>
+        <div class="prose-novel" v-html="renderedContent"></div>
       </article>
 
-      <!-- Chapter Navigation -->
-      <div class="sticky bottom-0 glass border-t border-white/10 px-4 py-4">
-        <div class="flex items-center justify-between">
+      <div
+        ref="createToolbarRef"
+        v-if="showCreateToolbar"
+        :style="toolbarPosition"
+        class="fixed z-50 animate-in fade-in slide-in-from-y-2 duration-150"
+      >
+        <div class="glass rounded-xl shadow-2xl border border-white/10 p-1 flex items-center gap-1">
+          <button
+            @click="openCreateModal"
+            class="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-neuro-primary hover:bg-neuro-primary/90 text-white text-sm font-medium transition"
+          >
+            <Icon name="ph:note-pencil" />
+            添加批注
+          </button>
+          <div class="w-px h-6 bg-white/10 mx-1" />
+          <button
+            @click="cancelSelection"
+            class="p-2 rounded-lg hover:bg-white/10 text-white/60 hover:text-white transition"
+            title="取消选择"
+          >
+            <Icon name="ph:x" />
+          </button>
+        </div>
+      </div>
+
+      <Transition
+        enter-active-class="transition duration-150"
+        enter-from-class="opacity-0 scale-95 -translate-y-2"
+        enter-to-class="opacity-100 scale-100 translate-y-0"
+        leave-active-class="transition duration-100"
+        leave-from-class="opacity-100 scale-100"
+        leave-to-class="opacity-0 scale-95 -translate-y-2"
+      >
+        <div
+          v-if="hoveredAnnotation"
+          :style="tooltipPosition"
+          class="fixed z-50 max-w-xs w-80 animate-in"
+          @mouseenter="tooltipHovered = true"
+          @mouseleave="handleTooltipMouseLeave"
+        >
+          <div class="glass rounded-xl shadow-2xl border border-white/10 overflow-hidden">
+            <div class="px-4 py-3 border-b border-white/10 flex items-center gap-2">
+              <img
+                :src="hoveredAnnotation.user.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(hoveredAnnotation.user.username)}`"
+                :alt="hoveredAnnotation.user.username"
+                class="w-6 h-6 rounded-full flex-shrink-0"
+              />
+              <span class="text-sm font-medium flex-1 truncate">{{ hoveredAnnotation.user.username }}</span>
+              <span
+                :class="[
+                  'px-2 py-0.5 rounded-full text-[10px] font-medium',
+                  hoveredAnnotation.status === 'PENDING'
+                    ? 'bg-amber-500/20 text-amber-300'
+                    : 'bg-emerald-500/20 text-emerald-300'
+                ]"
+              >
+                {{ hoveredAnnotation.status === 'PENDING' ? '待处理' : '已解决' }}
+              </span>
+            </div>
+            <div class="px-4 py-3">
+              <p class="text-sm text-white/85 line-clamp-4 mb-2">{{ hoveredAnnotation.content }}</p>
+              <div class="flex items-center justify-between text-xs text-white/40">
+                <span>{{ formatDate(hoveredAnnotation.createdAt) }}</span>
+                <span v-if="hoveredAnnotation._count?.replies || hoveredAnnotation.replies?.length" class="flex items-center gap-1">
+                  <Icon name="ph:chat-circle" />
+                  {{ hoveredAnnotation._count?.replies || hoveredAnnotation.replies?.length }} 回复
+                </span>
+              </div>
+            </div>
+            <div class="px-4 py-2 border-t border-white/10 bg-white/5">
+              <button
+                @click="selectAnnotationFromTooltip"
+                class="w-full py-1.5 rounded-lg bg-neuro-primary/20 text-neuro-primary hover:bg-neuro-primary/30 text-xs font-medium transition"
+              >
+                查看详情
+              </button>
+            </div>
+          </div>
+        </div>
+      </Transition>
+
+      <div class="sticky bottom-0 glass border-t border-white/10 px-4 py-4 z-20 transition-all" :class="annotationsStore.isPanelOpen && annotationsStore.hasPermission ? 'pr-[28rem]' : ''">
+        <div class="max-w-4xl mx-auto flex items-center justify-between">
           <NuxtLink
             v-if="chapter.prevChapter"
             :to="`/novels/${novelId}/chapters/${chapter.prevChapter.id}`"
@@ -168,15 +170,13 @@
         </div>
       </div>
 
-      <!-- Chapter Comments Section -->
-      <div class="px-4 py-8">
+      <div class="px-4 py-8 transition-all max-w-4xl mx-auto" :class="annotationsStore.isPanelOpen && annotationsStore.hasPermission ? 'pr-[28rem] md:pr-8' : ''">
         <div class="card p-6">
           <h3 class="text-xl font-bold mb-4 flex items-center gap-2">
             <Icon name="ph:chat-circle-text" />
             章节评论
           </h3>
 
-          <!-- Comment Form -->
           <div v-if="user" class="mb-6">
             <FormTextarea
               v-model="chapterComment"
@@ -197,7 +197,6 @@
             后可以发表评论
           </div>
 
-          <!-- Comments List -->
           <div v-if="chapter.comments?.length" class="space-y-4">
             <div
               v-for="comment in chapter.comments"
@@ -227,7 +226,6 @@
                   </div>
                   <p class="text-white/80">{{ comment.content }}</p>
 
-                  <!-- Replies -->
                   <div v-if="comment.replies?.length" class="mt-3 space-y-2 pl-4 border-l-2 border-white/10">
                     <div
                       v-for="reply in comment.replies"
@@ -266,7 +264,6 @@
       </div>
     </div>
 
-    <!-- Not Found -->
     <div v-else class="container mx-auto px-4 py-20 text-center">
       <Icon name="ph:warning" class="text-6xl text-white/30 mb-4" />
       <p class="text-xl text-white/50">章节不存在</p>
@@ -274,6 +271,30 @@
         返回小说库
       </NuxtLink>
     </div>
+
+    <AnnotationCreateModal
+      :visible="showCreateModal"
+      :selected-text="annotationsStore.selectedText?.text || ''"
+      @close="closeCreateModal"
+      @submit="handleCreateAnnotation"
+    />
+
+    <AnnotationPanel
+      :is-open="annotationsStore.isPanelOpen"
+      :annotations="annotationsStore.annotations"
+      :active-annotation="annotationsStore.activeAnnotation"
+      :active-annotation-id="annotationsStore.activeAnnotationId"
+      :filter="annotationsStore.filter"
+      :filtered-annotations="annotationsStore.filteredAnnotations"
+      :pending-count="annotationsStore.pendingCount"
+      :resolved-count="annotationsStore.resolvedCount"
+      @close="annotationsStore.closePanel()"
+      @select="(id) => annotationsStore.setActiveAnnotation(id)"
+      @back="annotationsStore.setActiveAnnotation(null)"
+      @set-filter="(f) => annotationsStore.setFilter(f)"
+      @toggle-status="handleToggleStatus"
+      @create-reply="handleCreateReply"
+    />
   </div>
 </template>
 
@@ -282,9 +303,13 @@ const route = useRoute()
 const { user } = useAuth()
 const toast = useToast()
 const { trackEvent, startReadingSession } = useAnalytics()
+const annotationsStore = useAnnotations()
 
 const novelId = computed(() => Number(route.params.id))
 const chapterId = computed(() => Number(route.params.chapterId))
+
+const contentRef = ref<HTMLElement | null>(null)
+const createToolbarRef = ref<HTMLElement | null>(null)
 
 let readingSession: ReturnType<typeof startReadingSession> | null = null
 let heartbeatInterval: ReturnType<typeof setInterval> | null = null
@@ -293,14 +318,27 @@ const { data: chapter, pending, refresh } = await useFetch(
   () => `/api/novels/${novelId.value}/chapters/${chapterId.value}`
 )
 
-// Comments
-const activeParagraph = ref<number | null>(null)
-const newComment = ref('')
 const chapterComment = ref('')
-const commentLoading = ref(false)
 const chapterCommentLoading = ref(false)
 
-// Split content into paragraphs
+const showCreateToolbar = ref(false)
+const showCreateModal = ref(false)
+const toolbarPosition = ref({ top: '0px', left: '0px' })
+const tooltipPosition = ref({ top: '0px', left: '0px' })
+const tooltipHovered = ref(false)
+let mouseDownTarget: EventTarget | null = null
+
+watchEffect(() => {
+  if (chapter.value && chapterId.value) {
+    annotationsStore.loadAnnotations(chapterId.value)
+  }
+})
+
+const hoveredAnnotation = computed(() => {
+  if (annotationsStore.hoveredAnnotationId.value === null) return null
+  return annotationsStore.annotations.value.find(a => a.id === annotationsStore.hoveredAnnotationId.value) || null
+})
+
 const paragraphs = computed(() => {
   if (!chapter.value?.content) return []
   return chapter.value.content
@@ -309,20 +347,297 @@ const paragraphs = computed(() => {
     .filter((p: string) => p.length > 0)
 })
 
+const paragraphOffsets = computed(() => {
+  const offsets: number[] = []
+  let offset = 0
+  if (!chapter.value?.content) return offsets
+  const lines = chapter.value.content.split('\n')
+  for (const line of lines) {
+    offsets.push(offset)
+    offset += line.length + 1
+  }
+  return offsets
+})
+
+const escapeHtml = (text: string) => {
+  const div = document.createElement('div')
+  div.textContent = text
+  return div.innerHTML
+}
+
+const renderedContent = computed(() => {
+  if (!chapter.value?.content) return ''
+
+  const content = chapter.value.content
+  const lines = content.split('\n')
+  const annots = annotationsStore.filteredAnnotations.value
+
+  const globalOffset = 0
+  let currentOffset = globalOffset
+
+  let html = ''
+
+  lines.forEach((line, lineIdx) => {
+    if (line.trim().length === 0) {
+      currentOffset += line.length + 1
+      return
+    }
+
+    const lineStartOffset = currentOffset
+    const lineEndOffset = currentOffset + line.length
+
+    const lineAnnotations = annots.filter(a => {
+      return a.startOffset < lineEndOffset && a.endOffset > lineStartOffset
+    })
+
+    const segments: Array<{
+      start: number
+      end: number
+      annotations: typeof annots
+    }> = []
+
+    const splitPoints = new Set<number>()
+    splitPoints.add(0)
+    splitPoints.add(line.length)
+
+    lineAnnotations.forEach(a => {
+      const relStart = Math.max(0, a.startOffset - lineStartOffset)
+      const relEnd = Math.min(line.length, a.endOffset - lineStartOffset)
+      splitPoints.add(relStart)
+      splitPoints.add(relEnd)
+    })
+
+    const points = Array.from(splitPoints).sort((a, b) => a - b)
+
+    for (let i = 0; i < points.length - 1; i++) {
+      const segStart = points[i]
+      const segEnd = points[i + 1]
+      if (segStart >= segEnd) continue
+
+      const segAnnotations = lineAnnotations.filter(a => {
+        const relStart = Math.max(0, a.startOffset - lineStartOffset)
+        const relEnd = Math.min(line.length, a.endOffset - lineStartOffset)
+        return segStart >= relStart && segEnd <= relEnd
+      })
+
+      segments.push({
+        start: segStart,
+        end: segEnd,
+        annotations: segAnnotations
+      })
+    }
+
+    html += `<div class="relative group" data-line-index="${lineIdx}"><p class="mb-4 indent-8 leading-relaxed">`
+
+    segments.forEach(seg => {
+      const segText = line.substring(seg.start, seg.end)
+      const escaped = escapeHtml(segText)
+
+      if (seg.annotations.length === 0) {
+        html += escaped
+      } else {
+        const sortedAnns = [...seg.annotations].sort((a, b) => b.id - a.id)
+        const isResolved = sortedAnns.every(a => a.status === 'RESOLVED')
+        const isActive = sortedAnns.some(a => a.id === annotationsStore.activeAnnotationId.value)
+        const isHovered = sortedAnns.some(a => a.id === annotationsStore.hoveredAnnotationId.value)
+
+        const classes = [
+          'annotation-highlight',
+          'cursor-pointer',
+          'transition-all',
+          'duration-200',
+          'rounded-sm',
+          'relative',
+          isResolved
+            ? 'bg-white/10 text-white/60'
+            : 'bg-neuro-primary/30 border-b-2 border-neuro-primary',
+          isActive ? 'ring-2 ring-neuro-primary/60 bg-neuro-primary/40' : '',
+          isHovered ? 'bg-neuro-primary/50' : ''
+        ]
+
+        const annIds = sortedAnns.map(a => a.id).join(',')
+
+        html += `<span class="${classes.join(' ')}" data-annotation-ids="${annIds}">${escaped}</span>`
+      }
+    })
+
+    html += '</p></div>'
+    currentOffset += line.length + 1
+  })
+
+  return html
+})
+
+const handleMouseDown = (e: MouseEvent) => {
+  mouseDownTarget = e.target
+  tooltipHovered.value = false
+  annotationsStore.hoveredAnnotationId.value = null
+}
+
+const handleMouseUp = async (e: MouseEvent) => {
+  if (!annotationsStore.hasPermission.value) return
+
+  const target = e.target as HTMLElement
+  const annotationSpan = target.closest('[data-annotation-ids]') as HTMLElement
+
+  if (annotationSpan) {
+    const idsStr = annotationSpan.getAttribute('data-annotation-ids')
+    if (idsStr) {
+      const ids = idsStr.split(',').map(Number)
+      annotationsStore.hoveredAnnotationId.value = ids[0]
+      const rect = annotationSpan.getBoundingClientRect()
+      const tooltipWidth = 320
+      let left = rect.left + rect.width / 2 - tooltipWidth / 2
+      if (left < 16) left = 16
+      if (left + tooltipWidth > window.innerWidth - 16) {
+        left = window.innerWidth - tooltipWidth - 16
+      }
+      const top = rect.top > 300 ? rect.top - 20 : rect.bottom + 16
+      tooltipPosition.value = {
+        top: `${top}px`,
+        left: `${left}px`
+      }
+      return
+    }
+  }
+
+  const selection = window.getSelection()
+  if (!selection || selection.isCollapsed || selection.rangeCount === 0) {
+    showCreateToolbar.value = false
+    return
+  }
+
+  const range = selection.getRangeAt(0)
+  if (!contentRef.value?.contains(range.commonAncestorContainer)) {
+    showCreateToolbar.value = false
+    return
+  }
+
+  const selectedText = selection.toString().trim()
+  if (selectedText.length === 0) {
+    showCreateToolbar.value = false
+    return
+  }
+
+  if (selectedText.length < 1) {
+    showCreateToolbar.value = false
+    return
+  }
+
+  const preRange = document.createRange()
+  preRange.selectNodeContents(contentRef.value)
+  preRange.setEnd(range.startContainer, range.startOffset)
+  const startOffset = preRange.toString().length
+
+  const endOffset = startOffset + selection.toString().length
+
+  annotationsStore.setSelectedText(selectedText, startOffset, endOffset)
+
+  await nextTick()
+
+  const rect = range.getBoundingClientRect()
+  const toolbarWidth = 200
+  let left = rect.left + rect.width / 2 - toolbarWidth / 2
+  if (left < 16) left = 16
+  if (left + toolbarWidth > window.innerWidth - 16) {
+    left = window.innerWidth - toolbarWidth - 16
+  }
+  const top = rect.top > 80 ? rect.top - 60 : rect.bottom + 12
+  toolbarPosition.value = {
+    top: `${top}px`,
+    left: `${left}px`
+  }
+  showCreateToolbar.value = true
+}
+
+const cancelSelection = () => {
+  showCreateToolbar.value = false
+  annotationsStore.clearSelectedText()
+  window.getSelection()?.removeAllRanges()
+}
+
+const openCreateModal = () => {
+  showCreateModal.value = true
+  showCreateToolbar.value = false
+}
+
+const closeCreateModal = () => {
+  showCreateModal.value = false
+  annotationsStore.clearSelectedText()
+  window.getSelection()?.removeAllRanges()
+}
+
+const handleCreateAnnotation = async (content: string) => {
+  if (!annotationsStore.selectedText.value) return
+
+  try {
+    await annotationsStore.createAnnotation(chapterId.value, {
+      content,
+      startOffset: annotationsStore.selectedText.value.startOffset,
+      endOffset: annotationsStore.selectedText.value.endOffset,
+      anchorText: annotationsStore.selectedText.value.text
+    })
+    showCreateModal.value = false
+    window.getSelection()?.removeAllRanges()
+    toast.success('批注创建成功')
+  } catch (e: any) {
+    toast.error(e.message || '批注创建失败')
+  }
+}
+
+const selectAnnotationFromTooltip = () => {
+  if (annotationsStore.hoveredAnnotationId.value !== null) {
+    annotationsStore.setActiveAnnotation(annotationsStore.hoveredAnnotationId.value)
+    annotationsStore.hoveredAnnotationId.value = null
+    tooltipHovered.value = false
+  }
+}
+
+const handleTooltipMouseLeave = () => {
+  tooltipHovered.value = false
+  annotationsStore.hoveredAnnotationId.value = null
+}
+
+const handleToggleStatus = async (id: number, status: 'PENDING' | 'RESOLVED') => {
+  try {
+    await annotationsStore.updateStatus(id, status)
+    toast.success(status === 'RESOLVED' ? '已标记为已解决' : '已重新打开')
+  } catch (e: any) {
+    toast.error(e.message || '操作失败')
+  }
+}
+
+const handleCreateReply = async (id: number, content: string) => {
+  try {
+    await annotationsStore.createReply(id, content)
+    toast.success('回复成功')
+  } catch (e: any) {
+    toast.error(e.message || '回复失败')
+  }
+}
+
+const togglePanel = () => {
+  if (annotationsStore.isPanelOpen.value) {
+    annotationsStore.closePanel()
+  } else {
+    annotationsStore.openPanel()
+  }
+}
+
 const initReadingTracking = () => {
   if (!process.client || !chapter.value) return
-  
+
   trackEvent('CHAPTER_START', {
     novelId: novelId.value,
     chapterId: chapterId.value
   })
-  
+
   readingSession = startReadingSession(
     novelId.value,
     chapterId.value,
     paragraphs.value.length
   )
-  
+
   heartbeatInterval = setInterval(() => {
     readingSession?.heartbeat()
   }, 30000)
@@ -330,17 +645,17 @@ const initReadingTracking = () => {
 
 const handleScroll = () => {
   if (!readingSession || !paragraphs.value.length) return
-  
+
   const paragraphElements = document.querySelectorAll('.prose-novel > div')
   let visibleParagraph = 0
-  
+
   paragraphElements.forEach((el, index) => {
     const rect = el.getBoundingClientRect()
     if (rect.top < window.innerHeight / 2) {
       visibleParagraph = index
     }
   })
-  
+
   readingSession.updateProgress(visibleParagraph)
 }
 
@@ -373,7 +688,14 @@ watch(() => chapter.value, (newVal) => {
 if (process.client) {
   window.addEventListener('scroll', handleScroll, { passive: true })
   window.addEventListener('beforeunload', handleBeforeUnload)
-  
+  document.addEventListener('click', (e) => {
+    if (showCreateToolbar.value && !createToolbarRef.value?.contains(e.target as Node)) {
+      if (!contentRef.value?.contains(e.target as Node)) {
+        showCreateToolbar.value = false
+      }
+    }
+  })
+
   onUnmounted(() => {
     window.removeEventListener('scroll', handleScroll)
     window.removeEventListener('beforeunload', handleBeforeUnload)
@@ -381,53 +703,13 @@ if (process.client) {
       clearInterval(heartbeatInterval)
     }
     readingSession?.endSession(false)
+    annotationsStore.reset()
   })
-}
-
-// Group comments by paragraph
-const paragraphComments = computed(() => {
-  if (!chapter.value?.comments) return {}
-  const grouped: Record<number, any[]> = {}
-  chapter.value.comments.forEach((comment: any) => {
-    if (comment.paragraph !== null) {
-      if (!grouped[comment.paragraph]) {
-        grouped[comment.paragraph] = []
-      }
-      grouped[comment.paragraph].push(comment)
-    }
-  })
-  return grouped
-})
-
-const toggleParagraphComment = (index: number) => {
-  activeParagraph.value = activeParagraph.value === index ? null : index
-}
-
-const submitComment = async (paragraphIndex: number) => {
-  if (!newComment.value.trim()) return
-  
-  commentLoading.value = true
-  try {
-    await $fetch(`/api/chapters/${chapterId.value}/comments`, {
-      method: 'POST',
-      body: {
-        content: newComment.value,
-        paragraph: paragraphIndex
-      }
-    })
-    newComment.value = ''
-    await refresh()
-    toast.success('评论成功')
-  } catch (e: any) {
-    toast.error(e.message || '评论失败')
-  } finally {
-    commentLoading.value = false
-  }
 }
 
 const submitChapterComment = async () => {
   if (!chapterComment.value.trim()) return
-  
+
   chapterCommentLoading.value = true
   try {
     await $fetch(`/api/chapters/${chapterId.value}/comments`, {
@@ -460,3 +742,10 @@ useHead({
   title: computed(() => chapter.value ? `${chapter.value.title} - ${chapter.value.novel?.title}` : '加载中...')
 })
 </script>
+
+<style scoped>
+.annotation-highlight {
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+</style>
