@@ -1,25 +1,24 @@
 import prisma from '~/server/utils/prisma'
 import { requireAuth } from '~/server/utils/auth'
 import { hasPermission } from '~/server/utils/permissionMiddleware'
-import { chapterSchema } from '~/server/utils/validators'
-import { buildChapterSegments } from '~/server/utils/searchService'
 import { createChapterVersion } from '~/server/utils/versionControl'
+import { buildChapterSegments } from '~/server/utils/searchService'
 
 export default defineEventHandler(async (event) => {
   const user = requireAuth(event)
   const novelId = Number(event.context.params?.id)
   const chapterId = Number(event.context.params?.chapterId)
-  const body = await readBody(event)
+  const versionId = Number(event.context.params?.versionId)
 
-  if (!novelId || isNaN(novelId) || !chapterId || isNaN(chapterId)) {
+  if (!novelId || isNaN(novelId) || !chapterId || isNaN(chapterId) || !versionId || isNaN(versionId)) {
     throw createError({
       statusCode: 400,
       message: '无效的参数'
     })
-  })
+  }
 
   const chapter = await prisma.chapter.findFirst({
-    where: { id: chapterId, novelId, deletedAt: null },
+    where: { id: chapterId, novelId },
     include: {
       novel: { select: { authorId: true } }
     }
@@ -38,37 +37,39 @@ export default defineEventHandler(async (event) => {
   if (!isOwner && !canEditAny) {
     throw createError({
       statusCode: 403,
-      message: '无权编辑此章节'
+      message: '无权恢复此章节的版本'
     })
   }
 
-  const result = chapterSchema.safeParse(body)
-  if (!result.success) {
+  const targetVersion = await prisma.chapterVersion.findFirst({
+    where: { id: versionId, chapterId }
+  })
+
+  if (!targetVersion) {
     throw createError({
-      statusCode: 400,
-      message: result.error.errors[0].message
+      statusCode: 404,
+      message: '目标版本不存在'
     })
   }
 
-  const { title, content, order } = result.data
-  const wordCount = content.replace(/\s/g, '').length
+  const wordCount = targetVersion.content.replace(/\s/g, '').length
 
   const updatedChapter = await prisma.chapter.update({
     where: { id: chapterId },
     data: {
-      title,
-      content,
-      order: order || chapter.order,
+      title: targetVersion.title,
+      content: targetVersion.content,
       wordCount
     }
   })
 
   await createChapterVersion({
     chapterId,
-    title,
-    content,
+    title: targetVersion.title,
+    content: targetVersion.content,
     createdById: user.userId,
-    type: 'AUTO'
+    type: 'RESTORE',
+    restoredFromVersionId: versionId
   })
 
   try {
@@ -77,5 +78,12 @@ export default defineEventHandler(async (event) => {
     console.warn('Failed to rebuild chapter segments for chapter', chapterId, e.message)
   }
 
-  return { success: true, chapter: updatedChapter }
+  return {
+    success: true,
+    chapter: updatedChapter,
+    restoredFromVersion: {
+      id: targetVersion.id,
+      versionNum: targetVersion.versionNum
+    }
+  }
 })

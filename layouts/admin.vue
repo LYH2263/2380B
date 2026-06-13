@@ -60,6 +60,14 @@
           <Icon name="ph:shield-check" />
           <span>权限管理</span>
         </NuxtLink>
+        <NuxtLink
+          to="/admin/trash"
+          class="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/10 transition"
+          active-class="bg-white/10 text-neuro-primary"
+        >
+          <Icon name="ph:trash" />
+          <span>回收站</span>
+        </NuxtLink>
       </nav>
 
       <div class="absolute bottom-4 left-4 right-4">

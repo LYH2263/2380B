@@ -35,6 +35,13 @@
           </div>
           <div class="flex items-center gap-2">
             <button
+              @click="openVersionHistory(chapter)"
+              class="p-2 hover:bg-white/10 rounded-lg transition"
+              title="历史版本"
+            >
+              <Icon name="ph:clock-counter-clockwise" />
+            </button>
+            <button
               @click="editChapter(chapter)"
               class="p-2 hover:bg-white/10 rounded-lg transition"
               title="编辑"
@@ -118,7 +125,9 @@
           <div class="card p-6 max-w-md w-full">
             <h3 class="text-xl font-bold mb-4">确认删除</h3>
             <p class="text-white/70 mb-6">
-              确定要删除章节「{{ deleteTarget.title }}」吗？此操作不可撤销。
+              确定要删除章节「{{ deleteTarget.title }}」吗？
+              <br />
+              <span class="text-sm text-neuro-primary">章节将被移至回收站，30天内可恢复。</span>
             </p>
             <div class="flex justify-end gap-4">
               <Button @click="deleteTarget = null" variant="secondary">取消</Button>
@@ -128,6 +137,15 @@
         </div>
       </Transition>
     </Teleport>
+
+    <!-- Version History Modal -->
+    <VersionHistoryModal
+      :visible="showVersionHistory"
+      :novel-id="novelId"
+      :chapter-id="versionHistoryChapterId"
+      @close="showVersionHistory = false"
+      @restored="onVersionRestored"
+    />
   </div>
 </template>
 
@@ -151,6 +169,8 @@ const chapters = computed(() => chaptersData.value?.chapters || [])
 const showAddModal = ref(false)
 const editTarget = ref<any>(null)
 const deleteTarget = ref<any>(null)
+const showVersionHistory = ref(false)
+const versionHistoryChapterId = ref<number | null>(null)
 
 const chapterForm = reactive({
   title: '',
@@ -172,6 +192,15 @@ const editChapter = async (chapter: any) => {
 
 const deleteChapter = (chapter: any) => {
   deleteTarget.value = chapter
+}
+
+const openVersionHistory = (chapter: any) => {
+  versionHistoryChapterId.value = chapter.id
+  showVersionHistory.value = true
+}
+
+const onVersionRestored = async () => {
+  await refresh()
 }
 
 const closeModal = () => {

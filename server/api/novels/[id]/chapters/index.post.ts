@@ -6,6 +6,7 @@ import { calculateChapterPoints } from '~/server/utils/levels'
 import { awardPublishChapter } from '~/server/utils/pointsService'
 import { triggerNovelUpdateNotifications } from '~/server/utils/notificationService'
 import { buildChapterSegments } from '~/server/utils/searchService'
+import { createChapterVersion } from '~/server/utils/versionControl'
 
 export default defineEventHandler(async (event) => {
   const user = requireAuth(event)
@@ -69,6 +70,14 @@ export default defineEventHandler(async (event) => {
       order: newOrder,
       wordCount
     }
+  })
+
+  await createChapterVersion({
+    chapterId: chapter.id,
+    title,
+    content,
+    createdById: user.userId,
+    type: 'FULL'
   })
 
   const pointsEarned = calculateChapterPoints(wordCount)

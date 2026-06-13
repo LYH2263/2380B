@@ -14,7 +14,8 @@ export default defineEventHandler(async (event) => {
   const chapter = await prisma.chapter.findFirst({
     where: {
       id: chapterId,
-      novelId
+      novelId,
+      deletedAt: null
     },
     include: {
       novel: {
@@ -58,7 +59,8 @@ export default defineEventHandler(async (event) => {
     prisma.chapter.findFirst({
       where: {
         novelId,
-        order: { lt: chapter.order }
+        order: { lt: chapter.order },
+        deletedAt: null
       },
       orderBy: { order: 'desc' },
       select: { id: true, title: true, order: true }
@@ -66,7 +68,8 @@ export default defineEventHandler(async (event) => {
     prisma.chapter.findFirst({
       where: {
         novelId,
-        order: { gt: chapter.order }
+        order: { gt: chapter.order },
+        deletedAt: null
       },
       orderBy: { order: 'asc' },
       select: { id: true, title: true, order: true }

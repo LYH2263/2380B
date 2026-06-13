@@ -68,6 +68,7 @@ model User {
   permissionOverrides UserPermissionOverride[]
   roleChangesFrom  RoleChangeLog[]  @relation("RoleChangeFrom")
   roleChangesTo    RoleChangeLog[]  @relation("RoleChangeTo")
+  chapterVersions  ChapterVersion[]
 
   @@map("users")
 }
@@ -130,6 +131,10 @@ model Chapter {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // 回收站软删除字段
+  deletedAt DateTime?
+  deletedBy Int?
+
   // 关联
   novel         Novel         @relation(fields: [novelId], references: [id], onDelete: Cascade)
   segments      ChapterSegment[]
@@ -139,10 +144,45 @@ model Chapter {
   analyticsEvents AnalyticsEvent[]
   readSessions  ChapterReadSession[]
   annotations   Annotation[]
+  versions      ChapterVersion[]
 
   @@unique([novelId, order])
   @@index([searchVector], type: Gin)
+  @@index([deletedAt])
   @@map("chapters")
+}
+
+// 章节版本历史模型
+enum VersionType {
+  FULL
+  DIFF
+  AUTO
+  RESTORE
+}
+
+model ChapterVersion {
+  id          Int         @id @default(autoincrement())
+  chapterId   Int
+  versionNum  Int         // 版本号，从1开始递增
+  title       String
+  content     String      @db.Text
+  wordCount   Int         @default(0)
+  wordDiff    Int         @default(0)  // 相对上一版本的字数变化
+  type        VersionType @default(AUTO)  // 版本类型：自动保存/手动保存/恢复
+  diffPatch   String?     @db.Text  // 如果是差异存储，这里存diff patch
+  isKeyNode   Boolean     @default(false) // 是否关键节点（存储优化用）
+  restoredFromVersionId Int? // 如果是恢复版本，记录从哪个版本恢复
+  createdById Int         // 创建者用户ID
+  createdAt   DateTime    @default(now())
+
+  // 关联
+  chapter     Chapter     @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  createdBy   User        @relation(fields: [createdById], references: [id], onDelete: Cascade)
+
+  @@unique([chapterId, versionNum])
+  @@index([chapterId])
+  @@index([chapterId, createdAt])
+  @@map("chapter_versions")
 }
 
 // 章节分段索引模型 - 用于长章节分段搜索优化

@@ -1,7 +1,6 @@
 import prisma from '~/server/utils/prisma'
 import { requireAuth } from '~/server/utils/auth'
 import { hasPermission } from '~/server/utils/permissionMiddleware'
-import { softDeleteChapter } from '~/server/utils/versionControl'
 
 export default defineEventHandler(async (event) => {
   const user = requireAuth(event)
@@ -16,7 +15,7 @@ export default defineEventHandler(async (event) => {
   }
 
   const chapter = await prisma.chapter.findFirst({
-    where: { id: chapterId, novelId, deletedAt: null },
+    where: { id: chapterId, novelId },
     include: {
       novel: { select: { authorId: true } }
     }
@@ -30,16 +29,42 @@ export default defineEventHandler(async (event) => {
   }
 
   const isOwner = chapter.novel.authorId === user.userId
-  const canDeleteAny = await hasPermission(user.userId, user.role as any, 'chapter:delete_any')
+  const canViewAny = await hasPermission(user.userId, user.role as any, 'chapter:view_any')
 
-  if (!isOwner && !canDeleteAny) {
+  if (!isOwner && !canViewAny) {
     throw createError({
       statusCode: 403,
-      message: '无权删除此章节'
+      message: '无权查看此章节的版本历史'
     })
   }
 
-  await softDeleteChapter(chapterId, user.userId)
+  const versions = await prisma.chapterVersion.findMany({
+    where: { chapterId },
+    orderBy: { versionNum: 'desc' },
+    include: {
+      createdBy: {
+        select: {
+          id: true,
+          username: true,
+          avatar: true
+        }
+      }
+    }
+  })
 
-  return { success: true }
+  return {
+    versions: versions.map((v) => ({
+      id: v.id,
+      versionNum: v.versionNum,
+      title: v.title,
+      wordCount: v.wordCount,
+      wordDiff: v.wordDiff,
+      type: v.type,
+      isKeyNode: v.isKeyNode,
+      restoredFromVersionId: v.restoredFromVersionId,
+      createdById: v.createdById,
+      createdBy: v.createdBy,
+      createdAt: v.createdAt
+    }))
+  }
 })
