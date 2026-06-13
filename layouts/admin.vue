@@ -17,8 +17,16 @@
           class="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/10 transition"
           active-class="bg-white/10 text-neuro-primary"
         >
-          <Icon name="ph:chart-line" />
+          <Icon name="ph:gauge" />
           <span>数据概览</span>
+        </NuxtLink>
+        <NuxtLink
+          to="/admin/analytics"
+          class="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/10 transition"
+          active-class="bg-white/10 text-neuro-primary"
+        >
+          <Icon name="ph:chart-line" />
+          <span>数据分析</span>
         </NuxtLink>
         <NuxtLink
           to="/admin/novels"

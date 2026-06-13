@@ -159,6 +159,7 @@
             v-if="chapter.nextChapter"
             :to="`/novels/${novelId}/chapters/${chapter.nextChapter.id}`"
             class="btn-secondary"
+            @click="handleChapterComplete"
           >
             下一章
             <Icon name="ph:caret-right" class="ml-1" />
@@ -280,9 +281,13 @@
 const route = useRoute()
 const { user } = useAuth()
 const toast = useToast()
+const { trackEvent, startReadingSession } = useAnalytics()
 
-const novelId = computed(() => route.params.id)
-const chapterId = computed(() => route.params.chapterId)
+const novelId = computed(() => Number(route.params.id))
+const chapterId = computed(() => Number(route.params.chapterId))
+
+let readingSession: ReturnType<typeof startReadingSession> | null = null
+let heartbeatInterval: ReturnType<typeof setInterval> | null = null
 
 const { data: chapter, pending, refresh } = await useFetch(
   () => `/api/novels/${novelId.value}/chapters/${chapterId.value}`
@@ -303,6 +308,81 @@ const paragraphs = computed(() => {
     .map((p: string) => p.trim())
     .filter((p: string) => p.length > 0)
 })
+
+const initReadingTracking = () => {
+  if (!process.client || !chapter.value) return
+  
+  trackEvent('CHAPTER_START', {
+    novelId: novelId.value,
+    chapterId: chapterId.value
+  })
+  
+  readingSession = startReadingSession(
+    novelId.value,
+    chapterId.value,
+    paragraphs.value.length
+  )
+  
+  heartbeatInterval = setInterval(() => {
+    readingSession?.heartbeat()
+  }, 30000)
+}
+
+const handleScroll = () => {
+  if (!readingSession || !paragraphs.value.length) return
+  
+  const paragraphElements = document.querySelectorAll('.prose-novel > div')
+  let visibleParagraph = 0
+  
+  paragraphElements.forEach((el, index) => {
+    const rect = el.getBoundingClientRect()
+    if (rect.top < window.innerHeight / 2) {
+      visibleParagraph = index
+    }
+  })
+  
+  readingSession.updateProgress(visibleParagraph)
+}
+
+const handleBeforeUnload = () => {
+  if (heartbeatInterval) {
+    clearInterval(heartbeatInterval)
+  }
+  readingSession?.endSession(false)
+}
+
+const handleChapterComplete = () => {
+  if (heartbeatInterval) {
+    clearInterval(heartbeatInterval)
+  }
+  readingSession?.endSession(true)
+  trackEvent('CHAPTER_COMPLETE', {
+    novelId: novelId.value,
+    chapterId: chapterId.value
+  })
+}
+
+watch(() => chapter.value, (newVal) => {
+  if (newVal && !pending.value) {
+    nextTick(() => {
+      initReadingTracking()
+    })
+  }
+}, { immediate: true })
+
+if (process.client) {
+  window.addEventListener('scroll', handleScroll, { passive: true })
+  window.addEventListener('beforeunload', handleBeforeUnload)
+  
+  onUnmounted(() => {
+    window.removeEventListener('scroll', handleScroll)
+    window.removeEventListener('beforeunload', handleBeforeUnload)
+    if (heartbeatInterval) {
+      clearInterval(heartbeatInterval)
+    }
+    readingSession?.endSession(false)
+  })
+}
 
 // Group comments by paragraph
 const paragraphComments = computed(() => {

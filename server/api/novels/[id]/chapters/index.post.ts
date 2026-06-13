@@ -1,7 +1,8 @@
-import { prisma } from '~/server/utils/prisma'
+import prisma from '~/server/utils/prisma'
 import { requireAuth } from '~/server/utils/auth'
 import { chapterSchema } from '~/server/utils/validators'
-import { awardPublishChapter, calculateChapterPoints } from '~/server/utils/pointsService'
+import { calculateChapterPoints } from '~/server/utils/levels'
+import { awardPublishChapter } from '~/server/utils/pointsService'
 
 export default defineEventHandler(async (event) => {
   const user = requireAuth(event)

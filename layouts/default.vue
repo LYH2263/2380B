@@ -165,6 +165,18 @@
                   </NuxtLink>
 
                   <NuxtLink 
+                    to="/user/analytics" 
+                    class="flex items-center gap-3 px-4 py-3 hover:bg-white/10 transition"
+                    @click="showDropdown = false"
+                  >
+                    <Icon name="ph:chart-line-up-fill" class="text-neuro-primary" />
+                    <div class="flex-1">
+                      <div>我的数据</div>
+                      <div class="text-[10px] text-white/40">查看作品阅读分析</div>
+                    </div>
+                  </NuxtLink>
+
+                  <NuxtLink 
                     v-if="user.role === 'ADMIN'"
                     to="/admin" 
                     class="flex items-center gap-3 px-4 py-3 hover:bg-white/10 transition border-t border-white/10"

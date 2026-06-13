@@ -1,5 +1,5 @@
 import bcrypt from 'bcryptjs'
-import { prisma } from '~/server/utils/prisma'
+import prisma from '~/server/utils/prisma'
 import { registerSchema } from '~/server/utils/validators'
 import { signToken } from '~/server/utils/auth'
 import { awardInviteUser, addPoints } from '~/server/utils/pointsService'

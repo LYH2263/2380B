@@ -1,5 +1,5 @@
 import { requireAuth } from '~/server/utils/auth'
-import { prisma } from '~/server/utils/prisma'
+import prisma from '~/server/utils/prisma'
 import { ACHIEVEMENT_DEFINITIONS } from '~/server/utils/achievements'
 import { checkAchievements } from '~/server/utils/achievementService'
 

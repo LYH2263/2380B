@@ -1,4 +1,4 @@
-import { prisma } from '~/server/utils/prisma'
+import prisma from '~/server/utils/prisma'
 import { requireAuth } from '~/server/utils/auth'
 import { awardNovelLiked } from '~/server/utils/pointsService'
 

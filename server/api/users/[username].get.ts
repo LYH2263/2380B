@@ -1,6 +1,6 @@
 import { getAuthUser } from '~/server/utils/auth'
 import { getUserByUsername } from '~/server/utils/messageService'
-import { prisma } from '~/server/utils/prisma'
+import prisma from '~/server/utils/prisma'
 
 export default defineEventHandler(async (event) => {
   const username = event.context.params?.username as string

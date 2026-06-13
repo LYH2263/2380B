@@ -1,4 +1,4 @@
-import { prisma } from './prisma'
+import prisma from './prisma'
 import { ACHIEVEMENT_DEFINITIONS, type AchievementDefinition } from './achievements'
 import { addPoints } from './pointsService'
 

@@ -1,5 +1,5 @@
 import { requireAuth } from '~/server/utils/auth'
-import { prisma } from '~/server/utils/prisma'
+import prisma from '~/server/utils/prisma'
 import { deductPoints } from '~/server/utils/pointsService'
 
 export default defineEventHandler(async (event) => {

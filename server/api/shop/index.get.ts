@@ -1,4 +1,4 @@
-import { prisma } from '~/server/utils/prisma'
+import prisma from '~/server/utils/prisma'
 import { initializeShopItems } from '~/server/utils/shopItems'
 import type { ItemCategory } from '@prisma/client'
 

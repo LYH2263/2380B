@@ -1,4 +1,4 @@
-import { prisma } from './prisma'
+import prisma from './prisma'
 import type { ItemCategory } from '@prisma/client'
 
 interface ShopItemDefinition {

@@ -1,5 +1,5 @@
 import { requireAuth } from '~/server/utils/auth'
-import { prisma } from '~/server/utils/prisma'
+import prisma from '~/server/utils/prisma'
 import { getCheckinReward, CHECKIN_REWARDS, RETRO_CHECKIN_COST, getLevelByPoints, getLevelProgress } from '~/server/utils/levels'
 
 function startOfDay(date: Date): Date {

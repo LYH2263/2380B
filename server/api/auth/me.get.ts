@@ -1,4 +1,4 @@
-import { prisma } from '~/server/utils/prisma'
+import prisma from '~/server/utils/prisma'
 import { getAuthUser } from '~/server/utils/auth'
 import { getLevelByPoints, getLevelProgress } from '~/server/utils/levels'
 

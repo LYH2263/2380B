@@ -1,4 +1,4 @@
-import { prisma } from './prisma'
+import prisma from './prisma'
 import type { PointSource } from '@prisma/client'
 import { getLevelByPoints, calculateChapterPoints, POINT_RULES } from './levels'
 import { checkAchievements } from './achievementService'

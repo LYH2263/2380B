@@ -46,6 +46,9 @@ model User {
   conversationsAsUser1 Conversation[] @relation("ConversationUser1")
   conversationsAsUser2 Conversation[] @relation("ConversationUser2")
   messages         Message[]
+  analyticsEvents  AnalyticsEvent[]
+  readSessions     ChapterReadSession[]
+  retentions       UserRetention[]
 
   @@map("users")
 }
@@ -75,6 +78,8 @@ model Novel {
   likes     Like[]
   ratings   Rating[]
   readHistory ReadHistory[]
+  analyticsEvents AnalyticsEvent[]
+  readSessions ChapterReadSession[]
 
   @@map("novels")
 }
@@ -99,6 +104,8 @@ model Chapter {
   // 关联
   novel    Novel     @relation(fields: [novelId], references: [id], onDelete: Cascade)
   comments Comment[]
+  analyticsEvents AnalyticsEvent[]
+  readSessions ChapterReadSession[]
 
   @@unique([novelId, order])
   @@map("chapters")
@@ -385,4 +392,112 @@ model Message {
   @@index([conversationId])
   @@index([senderId])
   @@map("messages")
+}
+
+// 分析事件类型
+enum AnalyticsEventType {
+  PAGE_VIEW
+  NOVEL_DETAIL_VIEW
+  CHAPTER_START
+  CHAPTER_COMPLETE
+  USER_SIGNUP
+  USER_LOGIN
+}
+
+// 通用分析事件表
+model AnalyticsEvent {
+  id         Int                @id @default(autoincrement())
+  type       AnalyticsEventType
+  userId     Int?
+  deviceId   String?
+  novelId    Int?
+  chapterId  Int?
+  path       String
+  referrer   String?
+  userAgent  String?
+  ipAddress  String?
+  properties Json?
+  createdAt  DateTime           @default(now())
+
+  // 关联
+  user       User?              @relation(fields: [userId], references: [id], onDelete: SetNull)
+  novel      Novel?             @relation(fields: [novelId], references: [id], onDelete: SetNull)
+  chapter    Chapter?           @relation(fields: [chapterId], references: [id], onDelete: SetNull)
+
+  @@index([type, createdAt])
+  @@index([userId, createdAt])
+  @@index([novelId, createdAt])
+  @@index([chapterId, createdAt])
+  @@index([deviceId, createdAt])
+  @@map("analytics_events")
+}
+
+// 章节阅读会话表
+model ChapterReadSession {
+  id            Int      @id @default(autoincrement())
+  userId        Int?
+  deviceId      String
+  novelId       Int
+  chapterId     Int
+  startTime     DateTime @default(now())
+  endTime       DateTime?
+  duration      Int      @default(0)
+  totalParagraphs Int
+  lastParagraph Int      @default(0)
+  completionRate Float   @default(0)
+  exitPoint     Int?
+  isCompleted   Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // 关联
+  user          User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  novel         Novel    @relation(fields: [novelId], references: [id], onDelete: Cascade)
+  chapter       Chapter  @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([novelId, createdAt])
+  @@index([chapterId, createdAt])
+  @@index([deviceId, createdAt])
+  @@map("chapter_read_sessions")
+}
+
+// 每日统计汇总表
+model DailyStats {
+  id              Int      @id @default(autoincrement())
+  date            DateTime @unique
+  pageViews       Int      @default(0)
+  uniqueVisitors  Int      @default(0)
+  activeUsers     Int      @default(0)
+  newUsers        Int      @default(0)
+  newNovels       Int      @default(0)
+  newChapters     Int      @default(0)
+  totalReadingTime Int     @default(0)
+  avgReadingTime  Float    @default(0)
+  completionRate  Float    @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([date])
+  @@map("daily_stats")
+}
+
+// 用户留存表
+model UserRetention {
+  id              Int      @id @default(autoincrement())
+  cohortDate      DateTime
+  userId          Int
+  day0            Boolean  @default(true)
+  day1            Boolean  @default(false)
+  day7            Boolean  @default(false)
+  day14           Boolean  @default(false)
+  day30           Boolean  @default(false)
+  lastActiveDate  DateTime
+
+  // 关联
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([cohortDate, userId])
+  @@index([cohortDate])
+  @@map("user_retention")
 }

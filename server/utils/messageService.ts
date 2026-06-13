@@ -1,4 +1,4 @@
-import { prisma } from './prisma'
+import prisma from './prisma'
 import type { Prisma } from '@prisma/client'
 
 export interface CreateConversationOptions {

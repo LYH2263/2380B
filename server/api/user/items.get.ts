@@ -1,5 +1,5 @@
 import { requireAuth } from '~/server/utils/auth'
-import { prisma } from '~/server/utils/prisma'
+import prisma from '~/server/utils/prisma'
 
 export default defineEventHandler(async (event) => {
   const authUser = requireAuth(event)

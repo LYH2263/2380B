@@ -1,5 +1,5 @@
 import { requireAuth } from '~/server/utils/auth'
-import { prisma } from '~/server/utils/prisma'
+import prisma from '~/server/utils/prisma'
 import { getCheckinReward, getLevelByPoints, getLevelProgress } from '~/server/utils/levels'
 import { addPoints, deductPoints } from '~/server/utils/pointsService'
 

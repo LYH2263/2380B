@@ -1,4 +1,4 @@
-import { prisma } from '~/server/utils/prisma'
+import prisma from '~/server/utils/prisma'
 import { requireAuth } from '~/server/utils/auth'
 import { novelSchema } from '~/server/utils/validators'
 import { awardCreateNovel } from '~/server/utils/pointsService'
