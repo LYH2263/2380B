@@ -1,10 +1,11 @@
 import prisma from '~/server/utils/prisma'
 import type { H3Event } from 'h3'
 import { requireAuth } from '~/server/utils/auth'
+import { hasPermission } from '~/server/utils/permissionMiddleware'
 
 export interface AnnotationAuthUser {
   userId: number
-  role: 'USER' | 'ADMIN'
+  role: 'USER' | 'ADMIN' | 'AUTHOR' | 'VIP' | 'MODERATOR'
   email: string
 }
 
@@ -14,7 +15,8 @@ export async function checkAnnotationPermission(
 ): Promise<AnnotationAuthUser> {
   const user = requireAuth(event)
 
-  if (user.role === 'ADMIN') {
+  const canViewAny = await hasPermission(user.userId, user.role as any, 'annotation:view')
+  if (canViewAny) {
     return user
   }
 

@@ -1,4 +1,5 @@
-import { requireAuth, requireAdmin } from '~/server/utils/auth'
+import { requireAuth } from '~/server/utils/auth'
+import { requirePermission, hasPermission } from '~/server/utils/permissionMiddleware'
 import { buildChapterSegments, rebuildAllSegments } from '~/server/utils/searchService'
 import prisma from '~/server/utils/prisma'
 
@@ -9,7 +10,7 @@ export default defineEventHandler(async (event) => {
   const { novelId, chapterId, rebuildAll } = body || {}
 
   if (rebuildAll) {
-    requireAdmin(event)
+    await requirePermission(event, 'search:rebuild')
     const result = await rebuildAllSegments()
     return {
       success: true,
@@ -30,7 +31,10 @@ export default defineEventHandler(async (event) => {
       })
     }
 
-    if (chapter.novel.authorId !== user.userId && user.role !== 'ADMIN') {
+    const isOwner = chapter.novel.authorId === user.userId
+    const canSearchRebuild = await hasPermission(user.userId, user.role as any, 'search:rebuild')
+
+    if (!isOwner && !canSearchRebuild) {
       throw createError({
         statusCode: 403,
         message: '无权限操作此章节'
@@ -58,7 +62,10 @@ export default defineEventHandler(async (event) => {
       })
     }
 
-    if (novel.authorId !== user.userId && user.role !== 'ADMIN') {
+    const isOwner = novel.authorId === user.userId
+    const canSearchRebuild = await hasPermission(user.userId, user.role as any, 'search:rebuild')
+
+    if (!isOwner && !canSearchRebuild) {
       throw createError({
         statusCode: 403,
         message: '无权限操作此小说'

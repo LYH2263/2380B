@@ -24,6 +24,7 @@ export default defineEventHandler(async (event) => {
       nicknameColor: true,
       avatarFrame: true,
       adFree: true,
+      vipExpiresAt: true,
       _count: {
         select: {
           achievements: true

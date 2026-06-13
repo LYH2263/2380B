@@ -44,6 +44,22 @@
           <Icon name="ph:users" />
           <span>用户管理</span>
         </NuxtLink>
+        <NuxtLink
+          to="/admin/author-applications"
+          class="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/10 transition"
+          active-class="bg-white/10 text-neuro-primary"
+        >
+          <Icon name="ph:pen-nib" />
+          <span>作者认证审核</span>
+        </NuxtLink>
+        <NuxtLink
+          to="/admin/permissions"
+          class="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/10 transition"
+          active-class="bg-white/10 text-neuro-primary"
+        >
+          <Icon name="ph:shield-check" />
+          <span>权限管理</span>
+        </NuxtLink>
       </nav>
 
       <div class="absolute bottom-4 left-4 right-4">

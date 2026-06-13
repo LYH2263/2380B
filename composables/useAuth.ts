@@ -61,13 +61,36 @@ export const useAuth = () => {
   }
 
   const isAdmin = computed(() => user.value?.role === 'ADMIN')
+  const isAuthor = computed(() => ['AUTHOR', 'ADMIN'].includes(user.value?.role))
+  const isVip = computed(() => {
+    if (!user.value) return false
+    if (user.value.role === 'ADMIN') return true
+    if (user.value.role === 'VIP') {
+      if (user.value.vipExpiresAt) {
+        return new Date(user.value.vipExpiresAt) > new Date()
+      }
+      return false
+    }
+    return false
+  })
+  const isModerator = computed(() => ['MODERATOR', 'ADMIN'].includes(user.value?.role))
+
+  const ROLE_LABELS: Record<string, string> = {
+    USER: '普通用户',
+    ADMIN: '管理员',
+    AUTHOR: '认证作者',
+    VIP: '付费会员',
+    MODERATOR: '版主'
+  }
+
+  const userRoleLabel = computed(() => ROLE_LABELS[user.value?.role] || '普通用户')
 
   const userLevel = computed(() => user.value?.level || 1)
   const userLevelName = computed(() => user.value?.levelName || '萌新读者')
   const userPoints = computed(() => user.value?.points || 0)
   const userTotalPoints = computed(() => user.value?.totalPoints || 0)
   const userInviteCode = computed(() => user.value?.inviteCode || '')
-  const hasAdFree = computed(() => user.value?.adFree === true)
+  const hasAdFree = computed(() => user.value?.adFree === true || isVip.value)
 
   const getUserLevelProgress = () => {
     if (!user.value) return { current: 0, required: 0, percent: 0 }
@@ -82,6 +105,10 @@ export const useAuth = () => {
     user,
     token,
     isAdmin,
+    isAuthor,
+    isVip,
+    isModerator,
+    userRoleLabel,
     userLevel,
     userLevelName,
     userPoints,

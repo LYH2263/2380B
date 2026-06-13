@@ -1,5 +1,6 @@
 import prisma from '~/server/utils/prisma'
 import { requireAuth } from '~/server/utils/auth'
+import { hasPermission } from '~/server/utils/permissionMiddleware'
 
 export default defineEventHandler(async (event) => {
   const user = requireAuth(event)
@@ -11,9 +12,8 @@ export default defineEventHandler(async (event) => {
       statusCode: 400,
       message: '无效的参数'
     })
-  }
+  })
 
-  // 检查章节和权限
   const chapter = await prisma.chapter.findFirst({
     where: { id: chapterId, novelId },
     include: {
@@ -28,7 +28,10 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  if (chapter.novel.authorId !== user.userId && user.role !== 'ADMIN') {
+  const isOwner = chapter.novel.authorId === user.userId
+  const canDeleteAny = await hasPermission(user.userId, user.role as any, 'chapter:delete_any')
+
+  if (!isOwner && !canDeleteAny) {
     throw createError({
       statusCode: 403,
       message: '无权删除此章节'

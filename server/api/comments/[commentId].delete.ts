@@ -1,5 +1,6 @@
 import prisma from '~/server/utils/prisma'
 import { requireAuth } from '~/server/utils/auth'
+import { hasPermission } from '~/server/utils/permissionMiddleware'
 
 export default defineEventHandler(async (event) => {
   const user = requireAuth(event)
@@ -23,7 +24,10 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  if (comment.userId !== user.userId && user.role !== 'ADMIN') {
+  const isOwner = comment.userId === user.userId
+  const canDeleteAny = await hasPermission(user.userId, user.role as any, 'comment:delete_any')
+
+  if (!isOwner && !canDeleteAny) {
     throw createError({
       statusCode: 403,
       message: '无权删除此评论'

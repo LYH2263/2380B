@@ -1,10 +1,12 @@
 import jwt from 'jsonwebtoken'
 import type { H3Event } from 'h3'
 
+export type UserRole = 'USER' | 'ADMIN' | 'AUTHOR' | 'VIP' | 'MODERATOR'
+
 export interface JwtPayload {
   userId: number
   email: string
-  role: 'USER' | 'ADMIN'
+  role: UserRole
 }
 
 export function signToken(payload: JwtPayload): string {
@@ -52,4 +54,20 @@ export function requireAdmin(event: H3Event): JwtPayload {
     })
   }
   return user
+}
+
+export function requireRole(event: H3Event, role: UserRole): JwtPayload {
+  const user = requireAuth(event)
+  if (user.role !== role && user.role !== 'ADMIN') {
+    throw createError({
+      statusCode: 403,
+      message: '需要相应角色权限'
+    })
+  }
+  return user
+}
+
+export function isVipActive(vipExpiresAt: Date | null): boolean {
+  if (!vipExpiresAt) return false
+  return new Date(vipExpiresAt) > new Date()
 }

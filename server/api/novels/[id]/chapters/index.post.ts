@@ -1,5 +1,6 @@
 import prisma from '~/server/utils/prisma'
 import { requireAuth } from '~/server/utils/auth'
+import { hasPermission } from '~/server/utils/permissionMiddleware'
 import { chapterSchema } from '~/server/utils/validators'
 import { calculateChapterPoints } from '~/server/utils/levels'
 import { awardPublishChapter } from '~/server/utils/pointsService'
@@ -30,7 +31,10 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  if (novel.authorId !== user.userId && user.role !== 'ADMIN') {
+  const isOwner = novel.authorId === user.userId
+  const canPublishChapter = await hasPermission(user.userId, user.role as any, 'chapter:publish')
+
+  if (!isOwner && !canPublishChapter) {
     throw createError({
       statusCode: 403,
       message: '无权为此小说添加章节'

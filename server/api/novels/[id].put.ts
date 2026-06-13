@@ -1,5 +1,6 @@
 import prisma from '~/server/utils/prisma'
 import { requireAuth } from '~/server/utils/auth'
+import { hasPermission } from '~/server/utils/permissionMiddleware'
 import { novelSchema } from '~/server/utils/validators'
 
 export default defineEventHandler(async (event) => {
@@ -12,9 +13,8 @@ export default defineEventHandler(async (event) => {
       statusCode: 400,
       message: '无效的小说ID'
     })
-  }
+  })
 
-  // 检查权限
   const novel = await prisma.novel.findUnique({
     where: { id },
     select: { authorId: true }
@@ -27,7 +27,10 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  if (novel.authorId !== user.userId && user.role !== 'ADMIN') {
+  const isOwner = novel.authorId === user.userId
+  const canEditAny = await hasPermission(user.userId, user.role as any, 'novel:edit_any')
+
+  if (!isOwner && !canEditAny) {
     throw createError({
       statusCode: 403,
       message: '无权编辑此小说'
