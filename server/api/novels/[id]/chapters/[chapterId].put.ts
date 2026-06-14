@@ -16,7 +16,7 @@ export default defineEventHandler(async (event) => {
       statusCode: 400,
       message: '无效的参数'
     })
-  })
+  }
 
   const chapter = await prisma.chapter.findFirst({
     where: { id: chapterId, novelId, deletedAt: null },

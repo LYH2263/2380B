@@ -11,7 +11,7 @@ export default defineEventHandler(async (event) => {
       statusCode: 400,
       message: '无效的小说ID'
     })
-  })
+  }
 
   const novel = await prisma.novel.findUnique({
     where: { id },

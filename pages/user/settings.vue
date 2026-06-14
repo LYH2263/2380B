@@ -138,7 +138,7 @@
                   @change="handleMethodChange('enableEmail', localPreferences.enableEmail)"
                 />
                 <div :class="[
-                  'w-14 h-7 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[\"\"] after:absolute after:top-[3px] after:left-[3px] after:bg-white after:rounded-full after:h-6 after:w-6 after:transition-all',
+                  'w-14 h-7 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[\'\'] after:absolute after:top-[3px] after:left-[3px] after:bg-white after:rounded-full after:h-6 after:w-6 after:transition-all',
                   user?.emailVerified
                     ? 'bg-white/10 peer-checked:bg-blue-500'
                     : 'bg-white/5 cursor-not-allowed'
@@ -168,7 +168,7 @@
                   @change="handleWebPushChange"
                 />
                 <div :class="[
-                  'w-14 h-7 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[""] after:absolute after:top-[3px] after:left-[3px] after:bg-white after:rounded-full after:h-6 after:w-6 after:transition-all',
+                  'w-14 h-7 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[\'\'] after:absolute after:top-[3px] after:left-[3px] after:bg-white after:rounded-full after:h-6 after:w-6 after:transition-all',
                   webPushSupported
                     ? 'bg-white/10 peer-checked:bg-green-500'
                     : 'bg-white/5 cursor-not-allowed'

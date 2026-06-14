@@ -19,7 +19,7 @@
                 <input
                   v-model="search"
                   type="text"
-                  placeholder="搜索小说、章节内容...支持高级语法：\"精确短语\" -排除词 author:作者名"
+                  placeholder="搜索小说、章节内容...支持高级语法：&quot;精确短语&quot; -排除词 author:作者名"
                   class="input-field pl-10 pr-24"
                   @keyup.enter="handleSearch"
                 />
