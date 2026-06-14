@@ -77,7 +77,7 @@
             </div>
 
             <!-- Tags -->
-            <div class="flex flex-wrap gap-2 mb-6">
+            <div class="flex flex-wrap gap-2 mb-4">
               <NuxtLink
                 v-for="tag in novel.tags"
                 :key="tag"
@@ -86,6 +86,24 @@
               >
                 #{{ tag }}
               </NuxtLink>
+            </div>
+
+            <!-- Related Tags -->
+            <div v-if="relatedTags.length > 0" class="mb-6">
+              <div class="flex items-center gap-2 mb-2">
+                <Icon name="ph:link-simple" class="text-neuro-primary w-4 h-4" />
+                <span class="text-sm text-white/60">喜欢这些标签的人也喜欢</span>
+              </div>
+              <div class="flex flex-wrap gap-2">
+                <NuxtLink
+                  v-for="tag in relatedTags.slice(0, 10)"
+                  :key="tag.id"
+                  :to="`/novels?tag=${tag.name}`"
+                  class="px-2.5 py-1 bg-neuro-primary/10 hover:bg-neuro-primary/20 border border-neuro-primary/30 rounded-full text-xs text-white/70 transition"
+                >
+                  #{{ tag.name }}
+                </NuxtLink>
+              </div>
             </div>
 
             <!-- Description -->
@@ -219,6 +237,44 @@ const likeLoading = ref(false)
 const favoriteLoading = ref(false)
 const subscribeLoading = ref(false)
 const ratingLoading = ref(false)
+
+const relatedTags = ref<any[]>([])
+
+const fetchRelatedTags = async () => {
+  if (!novel.value?.tags || novel.value.tags.length === 0) {
+    relatedTags.value = []
+    return
+  }
+
+  try {
+    const firstTag = novel.value.tags[0]
+    const tagRes = await $fetch('/api/tags', {
+      query: {
+        type: 'search',
+        q: firstTag,
+        limit: 1
+      }
+    })
+
+    const tags = (tagRes as any).tags || []
+    if (tags.length > 0) {
+      const relatedRes = await $fetch('/api/tags', {
+        query: {
+          type: 'related',
+          tagId: tags[0].id,
+          limit: 15
+        }
+      })
+      relatedTags.value = (relatedRes as any).tags || []
+    }
+  } catch (e) {
+    console.error('Failed to fetch related tags:', e)
+  }
+}
+
+watch(() => novel.value?.tags, () => {
+  fetchRelatedTags()
+}, { immediate: true })
 
 watch(() => novel.value?.userRating, (val) => {
   userRating.value = val || 0

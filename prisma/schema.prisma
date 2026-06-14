@@ -81,6 +81,79 @@ enum Role {
   MODERATOR
 }
 
+// 标签分类枚举
+enum TagCategory {
+  GENRE
+  STYLE
+  ELEMENT
+  OTHER
+}
+
+// 标签模型
+model Tag {
+  id          Int         @id @default(autoincrement())
+  name        String      @unique
+  description String?     @db.Text
+  category    TagCategory @default(OTHER)
+  isCanonical Boolean     @default(true)
+  canonicalId Int?
+  useCount    Int         @default(0)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  canonical   Tag?        @relation("CanonicalTag", fields: [canonicalId], references: [id], onDelete: SetNull)
+  aliases     Tag[]       @relation("CanonicalTag")
+  novelTags   NovelTag[]
+  tagRelations TagRelation[]  @relation("TagRelations")
+  relatedTagRelations TagRelation[] @relation("RelatedTagRelations")
+
+  @@index([category])
+  @@index([useCount])
+  @@index([canonicalId])
+  @@map("tags")
+}
+
+// 小说-标签关联表
+model NovelTag {
+  id        Int      @id @default(autoincrement())
+  novelId   Int
+  tagId     Int
+  createdAt DateTime @default(now())
+
+  novel     Novel    @relation(fields: [novelId], references: [id], onDelete: Cascade)
+  tag       Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([novelId, tagId])
+  @@index([novelId])
+  @@index([tagId])
+  @@map("novel_tags")
+}
+
+// 标签相似度/关联推荐表
+model TagRelation {
+  id           Int      @id @default(autoincrement())
+  tagId        Int
+  relatedTagId Int
+  similarity   Float    @default(0)
+  coOccurrence Int      @default(0)
+  source       RelationSource @default(USER_BEHAVIOR)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @default(now())
+
+  tag         Tag      @relation("TagRelations", fields: [tagId], references: [id], onDelete: Cascade)
+  relatedTag  Tag      @relation("RelatedTagRelations", fields: [relatedTagId], references: [id], onDelete: Cascade)
+
+  @@unique([tagId, relatedTagId])
+  @@index([tagId, similarity])
+  @@map("tag_relations")
+}
+
+enum RelationSource {
+  USER_BEHAVIOR
+  CO_OCCURRENCE
+  ADMIN
+}
+
 // 小说模型
 model Novel {
   id          Int      @id @default(autoincrement())
@@ -89,7 +162,6 @@ model Novel {
   cover       String?
   authorId    Int
   status      NovelStatus @default(ONGOING)
-  tags        String[]
   viewCount   Int      @default(0)
   searchVector  Unsupported("tsvector")?
   createdAt   DateTime @default(now())
@@ -108,6 +180,7 @@ model Novel {
   readHistory   ReadHistory[]
   analyticsEvents AnalyticsEvent[]
   readSessions  ChapterReadSession[]
+  novelTags     NovelTag[]
 
   @@index([searchVector], type: Gin)
   @@map("novels")

@@ -49,13 +49,16 @@
         </div>
 
         <div class="space-y-2">
-          <label class="block text-sm font-medium text-white/70">标签（用逗号分隔）</label>
-          <input
-            v-model="tagsInput"
-            type="text"
-            class="input-field"
-            placeholder="日常, 温馨, 搞笑"
+          <label class="block text-sm font-medium text-white/70">标签</label>
+          <TagInput
+            ref="tagInputRef"
+            v-model="tags"
+            placeholder="输入标签，按回车添加..."
+            :enable-recommendations="true"
           />
+          <p class="text-xs text-white/40">
+            提示：输入时会自动匹配已有标签，基于标题和简介可获得智能推荐
+          </p>
         </div>
 
         <div class="flex justify-end gap-4">
@@ -93,7 +96,7 @@ const form = reactive({
   status: 'ONGOING'
 })
 
-const tagsInput = ref('')
+const tags = ref<string[]>([])
 
 const errors = reactive({
   title: '',
@@ -103,6 +106,22 @@ const errors = reactive({
 
 const loading = ref(false)
 
+const tagInputRef = ref<any>(null)
+
+let recommendDebounce: ReturnType<typeof setTimeout> | null = null
+
+const triggerRecommend = () => {
+  if (recommendDebounce) clearTimeout(recommendDebounce)
+  recommendDebounce = setTimeout(() => {
+    if (tagInputRef.value) {
+      tagInputRef.value.getRecommendations(form.title, form.description)
+    }
+  }, 500)
+}
+
+watch(() => form.title, triggerRecommend)
+watch(() => form.description, triggerRecommend)
+
 // 初始化表单数据
 watch(novel, (val) => {
   if (val) {
@@ -110,7 +129,7 @@ watch(novel, (val) => {
     form.description = val.description
     form.cover = val.cover || ''
     form.status = val.status
-    tagsInput.value = val.tags?.join(', ') || ''
+    tags.value = val.tags || []
   }
 }, { immediate: true })
 
@@ -135,16 +154,11 @@ const handleSubmit = async () => {
 
   loading.value = true
   try {
-    const tags = tagsInput.value
-      .split(/[,，]/)
-      .map(t => t.trim())
-      .filter(t => t.length > 0)
-
     await $fetch(`/api/novels/${novelId.value}`, {
       method: 'PUT',
       body: {
         ...form,
-        tags
+        tags: tags.value
       }
     })
 

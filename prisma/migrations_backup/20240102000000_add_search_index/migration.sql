@@ -37,7 +37,7 @@ CREATE INDEX "chapter_segments_chapterId_idx" ON "chapter_segments"("chapterId")
 
 -- 创建中文友好的文本搜索配置（基于 simple 配置，用于 Unicode 字符）
 -- 注意：如果安装了 zhparser 或 pg_jieba，可以替换为更专业的中文分词
-CREATE TEXT SEARCH CONFIGURATION IF NOT EXISTS chinese_search (COPY = simple);
+CREATE TEXT SEARCH CONFIGURATION chinese_search (COPY = simple);
 
 -- 自定义 novels 表 searchVector 更新函数
 CREATE OR REPLACE FUNCTION novels_search_vector_update() RETURNS trigger AS $$

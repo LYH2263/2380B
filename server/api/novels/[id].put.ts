@@ -2,6 +2,7 @@ import prisma from '~/server/utils/prisma'
 import { requireAuth } from '~/server/utils/auth'
 import { hasPermission } from '~/server/utils/permissionMiddleware'
 import { novelSchema } from '~/server/utils/validators'
+import { updateNovelTags, getNovelTagNames } from '~/server/utils/tagService'
 
 export default defineEventHandler(async (event) => {
   const user = requireAuth(event)
@@ -13,7 +14,7 @@ export default defineEventHandler(async (event) => {
       statusCode: 400,
       message: '无效的小说ID'
     })
-  })
+  }
 
   const novel = await prisma.novel.findUnique({
     where: { id },
@@ -53,8 +54,7 @@ export default defineEventHandler(async (event) => {
       title,
       description,
       cover: cover || null,
-      status: status || 'ONGOING',
-      tags: tags || []
+      status: status || 'ONGOING'
     },
     include: {
       author: {
@@ -63,5 +63,17 @@ export default defineEventHandler(async (event) => {
     }
   })
 
-  return { success: true, novel: updatedNovel }
+  if (tags !== undefined) {
+    await updateNovelTags(id, tags)
+  }
+
+  const tagNames = await getNovelTagNames(id)
+
+  return {
+    success: true,
+    novel: {
+      ...updatedNovel,
+      tags: tagNames
+    }
+  }
 })

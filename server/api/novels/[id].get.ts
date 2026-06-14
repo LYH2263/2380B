@@ -1,5 +1,6 @@
 import prisma from '~/server/utils/prisma'
 import { getAuthUser } from '~/server/utils/auth'
+import { getNovelTagNames } from '~/server/utils/tagService'
 
 export default defineEventHandler(async (event) => {
   const id = Number(event.context.params?.id)
@@ -63,18 +64,17 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  // 增加浏览量
+  const tags = await getNovelTagNames(id)
+
   await prisma.novel.update({
     where: { id },
     data: { viewCount: { increment: 1 } }
   })
 
-  // 计算平均评分
   const avgRating = novel.ratings.length > 0
     ? novel.ratings.reduce((sum, r) => sum + r.score, 0) / novel.ratings.length
     : 0
 
-  // 获取用户评分
   let userRating = null
   if (user) {
     const rating = await prisma.rating.findUnique({
@@ -90,6 +90,7 @@ export default defineEventHandler(async (event) => {
 
   return {
     ...novel,
+    tags,
     avgRating: Math.round(avgRating * 10) / 10,
     isLiked: user ? novel.likes?.length > 0 : false,
     isFavorited: user ? novel.favorites?.length > 0 : false,

@@ -7,6 +7,10 @@ import {
   type SearchScope
 } from '~/server/utils/searchService'
 
+function getTagNames(novelTags: any[]) {
+  return novelTags.map((nt: any) => nt.tag.name)
+}
+
 export default defineEventHandler(async (event) => {
   const query = getQuery(event)
   const user = getAuthUser(event)
@@ -26,7 +30,16 @@ export default defineEventHandler(async (event) => {
     const where: any = {}
 
     if (tag) {
-      where.tags = { has: tag }
+      where.novelTags = {
+        some: {
+          tag: {
+            name: {
+              equals: tag,
+              mode: 'insensitive'
+            }
+          }
+        }
+      }
     }
 
     if (status && ['ONGOING', 'COMPLETED', 'HIATUS'].includes(status)) {
@@ -51,6 +64,9 @@ export default defineEventHandler(async (event) => {
         include: {
           author: {
             select: { id: true, username: true, avatar: true }
+          },
+          novelTags: {
+            include: { tag: true }
           },
           _count: {
             select: {
@@ -97,7 +113,7 @@ export default defineEventHandler(async (event) => {
         description: novel.description,
         cover: novel.cover,
         status: novel.status,
-        tags: novel.tags,
+        tags: getTagNames(novel.novelTags),
         viewCount: novel.viewCount,
         avgRating: Math.round(avgRating * 10) / 10,
         totalHits: 0,

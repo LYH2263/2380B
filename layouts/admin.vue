@@ -37,6 +37,14 @@
           <span>小说管理</span>
         </NuxtLink>
         <NuxtLink
+          to="/admin/tags"
+          class="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/10 transition"
+          active-class="bg-white/10 text-neuro-primary"
+        >
+          <Icon name="ph:tags" />
+          <span>标签管理</span>
+        </NuxtLink>
+        <NuxtLink
           to="/admin/users"
           class="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/10 transition"
           active-class="bg-white/10 text-neuro-primary"

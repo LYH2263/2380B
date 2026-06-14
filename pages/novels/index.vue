@@ -91,6 +91,19 @@
           </div>
         </div>
 
+        <!-- Popular Tags -->
+        <div class="mt-6">
+          <div class="flex items-center gap-2 mb-3">
+            <Icon name="ph:fire" class="text-orange-400 w-4 h-4" />
+            <span class="text-sm font-medium text-white/70">热门标签</span>
+          </div>
+          <TagCloud
+            :limit="30"
+            :selected-tag="tag"
+            @select="handleTagSelect"
+          />
+        </div>
+
         <!-- Active Tag -->
         <div v-if="tag" class="mt-4 flex items-center gap-2">
           <span class="text-white/70">当前标签:</span>
@@ -287,6 +300,12 @@ const handleSearch = () => {
 
 const clearSearch = () => {
   search.value = ''
+  page.value = 1
+  refresh()
+}
+
+const handleTagSelect = (tagItem: any) => {
+  tag.value = tagItem.name
   page.value = 1
   refresh()
 }

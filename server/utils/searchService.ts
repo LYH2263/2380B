@@ -381,7 +381,16 @@ export async function fallbackSearch(
   }
 
   if (tag) {
-    where.tags = { has: tag }
+    where.novelTags = {
+      some: {
+        tag: {
+          name: {
+            equals: tag,
+            mode: 'insensitive'
+          }
+        }
+      }
+    }
   }
 
   if (status && ['ONGOING', 'COMPLETED', 'HIATUS'].includes(status)) {
@@ -407,6 +416,9 @@ export async function fallbackSearch(
       where,
       include: {
         author: { select: { id: true, username: true, avatar: true } },
+        novelTags: {
+          include: { tag: true }
+        },
         chapters: needChapters ? {
           select: {
             id: true,
@@ -550,7 +562,7 @@ export async function fallbackSearch(
       description: novel.description,
       cover: novel.cover,
       status: novel.status,
-      tags: novel.tags,
+      tags: novel.novelTags?.map((nt: any) => nt.tag.name) || [],
       viewCount: novel.viewCount,
       avgRating: Math.round(avgRating * 10) / 10,
       totalHits: processedHits.length,

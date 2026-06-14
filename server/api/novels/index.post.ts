@@ -2,6 +2,7 @@ import prisma from '~/server/utils/prisma'
 import { requireAuth } from '~/server/utils/auth'
 import { novelSchema } from '~/server/utils/validators'
 import { awardCreateNovel } from '~/server/utils/pointsService'
+import { updateNovelTags, getNovelTagNames } from '~/server/utils/tagService'
 
 export default defineEventHandler(async (event) => {
   const user = requireAuth(event)
@@ -23,7 +24,6 @@ export default defineEventHandler(async (event) => {
       description,
       cover: cover || null,
       status: status || 'ONGOING',
-      tags: tags || [],
       authorId: user.userId
     },
     include: {
@@ -33,11 +33,20 @@ export default defineEventHandler(async (event) => {
     }
   })
 
+  if (tags && tags.length > 0) {
+    await updateNovelTags(novel.id, tags)
+  }
+
+  const tagNames = await getNovelTagNames(novel.id)
+
   const pointsResult = await awardCreateNovel(user.userId, title)
 
   return {
     success: true,
-    novel,
+    novel: {
+      ...novel,
+      tags: tagNames
+    },
     pointsEarned: pointsResult.success ? 100 : 0,
     unlockedAchievements: pointsResult.unlockedAchievements || [],
   }
