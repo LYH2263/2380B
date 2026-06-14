@@ -88,15 +88,12 @@
                 <label class="block text-sm font-medium text-white/70">
                   章节内容 <span class="text-neuro-primary">*</span>
                 </label>
-                <textarea
+                <MarkdownEditor
+                  ref="markdownEditorRef"
                   v-model="chapterForm.content"
-                  rows="20"
-                  class="input-field font-mono text-sm"
-                  placeholder="在这里输入章节内容...&#10;&#10;段落之间用空行分隔"
+                  :draft-key="`chapter_${novelId}_${editTarget?.id || 'new'}`"
+                  placeholder="在这里输入章节内容...&#10;&#10;支持 Markdown 语法"
                 />
-                <p class="text-sm text-white/50">
-                  字数：{{ chapterForm.content.replace(/\s/g, '').length }}
-                </p>
               </div>
 
               <div class="flex justify-end gap-4">
@@ -171,6 +168,7 @@ const editTarget = ref<any>(null)
 const deleteTarget = ref<any>(null)
 const showVersionHistory = ref(false)
 const versionHistoryChapterId = ref<number | null>(null)
+const markdownEditorRef = ref<any>(null)
 
 const chapterForm = reactive({
   title: '',
@@ -231,6 +229,7 @@ const handleSubmit = async () => {
       })
       toast.success('添加成功')
     }
+    markdownEditorRef.value?.clearDraft()
     closeModal()
     await refresh()
   } catch (e: any) {
